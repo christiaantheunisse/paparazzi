@@ -1,0 +1,16 @@
+Format:
+_directory_name_
+_description of the images in the directory on the line after the name_
+-----------------------------------------------------------------------
+20230301-163805
+Images captured in the Cyberzoo during the practical session on 1 March. The orange pixels are converted to white pixels.
+
+20190121-135009
+Images from the dataset from Brightspace. Cyberzoo with orange poles.
+
+20190121-140205
+Images from the dataset from Brightspace. Cyberzoo with orange poles and a partly orange panel.
+
+20190121-142935
+Images from the dataset from Brightspace. Cyberzoo with orange poles, a partly orange panel and floor mats.
+
