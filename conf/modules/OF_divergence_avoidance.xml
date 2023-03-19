@@ -61,4 +61,25 @@
     <flag name="LDFLAGS" value="lharfbuzz"/>
     <flag name="LDFLAGS" value="lrt"/>
   </makefile>
+  <settings>
+    <dl_settings name="opticalFlowAvoidance">
+      <dl_setting var=param_DET_THRESHOLD min="0" step="0.05" max="2" shortname="det_thresh">
+      <dl_setting var=param_RESIZE_FX min="0" step="0.01" max="1" shortname="resize_fx">
+      <dl_setting var=param_RESIZE_FY min="0" step="0.01" max="1" shortname="resize_fy">
+      <dl_setting var=param_OFF_PYR_SCALE min="0" step="0.05" max="1" shortname="pyr_scale">
+      <dl_setting var=param_OFF_LEVELS min="1" step="1" max="10" shortname="pyr_levels">
+      <dl_setting var=param_OFF_WINSIZE min="1" step="1" max="30" shortname="winsize">
+      <dl_setting var=param_OFF_ITERATIONS min="1" step="1" max="15" shortname="iterations">
+      <dl_setting var=param_OFF_POLY_N min="1" step="1" max="20" shortname="poly_n">
+      <dl_setting var=param_OFF_POLY_SIGMA min="0" step="0.1" max="3" shortname="poly_sigma">
+      <dl_setting var=param_OFF_FLAGS min="0" step="1" max="10" shortname="flags">
+      <dl_setting var=param_CROP_X min="0" step="1" max="320" shortname="crop_x">
+      <dl_setting var=param_CROP_Y min="0" step="1" max="240" shortname="crop_y">
+      <dl_setting var=param_CROP_WIDTH min="1" step="1" max="320" shortname="crop_w">
+      <dl_setting var=param_CROP_HEIGHT min="1" step="1" max="240" shortname="crop_h">
+      <dl_setting var=param_PERCENTAGE_HISTORY_IMPORTANCE min="0" step="0.01" max="1" shortname="history_frac">
+      <dl_setting var=param_PREFERRED_INDEX min="0" step="1" max="4" shortname="pref_index">
+      <dl_setting var=param_SIDE_PENALTY min="0" step="0.01" max="1" shortname="side_penalty">
+    </dl_settings>
+  </settings>
 </module>

@@ -27,6 +27,10 @@
 #include "modules/computer_vision/of_avoidance.h"
 // #include "modules/computer_vision/opencv_example.h"
 
+// TODO: add ABI broadcast listener and function which responds to a new
+// direction index being published by the image processor. In this function,
+// run Adam's code to process the index and determine where to go.
+
 #ifndef OPENCVDEMO_FPS
 #define OPENCVDEMO_FPS 0       ///< Default FPS (zero means run at camera fps)
 #endif

@@ -40,12 +40,17 @@ using namespace cv;
 #define DET_THRESHOLD 0.2
 #endif
 
+double param_DET_THRESHOLD = DET_THRESHOLD;
+
 #ifndef RESIZE_FX
 #define RESIZE_FX 0.5
 #endif
 #ifndef RESIZE_FY
 #define RESIZE_FY 0.5
 #endif
+
+double param_RESIZE_FX = RESIZE_FX;
+double param_RESIZE_FY = RESIZE_FY;
 
 #ifndef OFF_PYR_SCALE
 #define OFF_PYR_SCALE 0.5
@@ -69,6 +74,14 @@ using namespace cv;
 #define OFF_FLAGS 0
 #endif
 
+double param_OFF_PYR_SCALE = OFF_PYR_SCALE;
+int param_OFF_LEVELS = OFF_LEVELS;
+int param_OFF_WINSIZE = OFF_WINSIZE;
+int param_OFF_ITERATIONS = OFF_ITERATIONS;
+int param_OFF_POLY_N = OFF_POLY_N;
+double param_OFF_POLY_SIGMA = OFF_POLY_SIGMA;
+double param_OFF_FLAGS = OFF_FLAGS;
+
 #ifndef CROP_X
 #define CROP_X 0
 #endif
@@ -82,6 +95,11 @@ using namespace cv;
 #define CROP_HEIGHT 125
 #endif
 
+int param_CROP_X = CROP_X;
+int param_CROP_Y = CROP_Y;
+int param_CROP_WIDTH = CROP_WIDTH;
+int param_CROP_HEIGHT = CROP_HEIGHT;
+
 #ifndef N_DIRBLOCKS
 #define N_DIRBLOCKS 5
 #endif
@@ -93,12 +111,17 @@ using namespace cv;
 #define PERCENTAGE_HISTORY_IMPORTANCE 0.7
 #endif
 
+double param_PERCENTAGE_HISTORY_IMPORTANCE = PERCENTAGE_HISTORY_IMPORTANCE;
+
 #ifndef PREFERRED_INDEX
 #define PREFERRED_INDEX 2
 #endif
 #ifndef SIDE_PENALTY
 #define SIDE_PENALTY 0.05
 #endif
+
+int param_PREFERRED_INDEX = PREFERRED_INDEX;
+double param_SIDE_PENALTY = SIDE_PENALTY;
 
 Mat old_frame_grayscale;
 double detectionHistory[N_DIRBLOCKS] = {};
@@ -165,10 +188,10 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
 
       }
 
-      filtered_detection_sum += std::abs(i - PREFERRED_INDEX) * SIDE_PENALTY;
+      filtered_detection_sum += std::abs(i - param_PREFERRED_INDEX) * param_SIDE_PENALTY;
 
       // Weigh the detections and take historical detections into account as well
-      updated_detection_history[i] = (1 - PERCENTAGE_HISTORY_IMPORTANCE) * filtered_detection_sum + PERCENTAGE_HISTORY_IMPORTANCE * detection_history[i];
+      updated_detection_history[i] = (1 - param_PERCENTAGE_HISTORY_IMPORTANCE) * filtered_detection_sum + param_PERCENTAGE_HISTORY_IMPORTANCE * detection_history[i];
 
   }
 
@@ -241,10 +264,10 @@ void opencv_main(char *img, int width, int height) {
   cv::cvtColor(frame, frame_grayscale, CV_YUV2GRAY_Y422);
 
   // Resize gray frame
-  cv::resize(frame_grayscale, gray_resized, Size(), RESIZE_FX, RESIZE_FY);
+  cv::resize(frame_grayscale, gray_resized, Size(), param_RESIZE_FX, param_RESIZE_FY);
 
   // Define cropped region (x, y, width, height)
-  cv::Rect cropped_region(CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT);
+  cv::Rect cropped_region(param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
 
   // Crop frame to smaller region
   Mat cropped_gray_frame = grayResized(cropped_region);
@@ -262,7 +285,7 @@ void opencv_main(char *img, int width, int height) {
 
   // Calculate optical flow using old gray frame and new gray frame. Store in flowUmat
   // prev, next, src, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
-  cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, OFF_PYR_SCALE, OFF_LEVELS, OFF_WINSIZE, OFF_ITERATIONS, OFF_POLY_N, OFF_POLY_SIGMA, OFF_FLAGS);
+  cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, param_OFF_PYR_SCALE, param_OFF_LEVELS, param_OFF_WINSIZE, param_OFF_ITERATIONS, param_OFF_POLY_N, param_OFF_POLY_SIGMA, param_OFF_FLAGS);
 
   // Copy this frame to the oldGray Mat, to be used in next frame
   cropped_gray_frame.copyTo(old_frame_grayscale);
@@ -277,7 +300,7 @@ void opencv_main(char *img, int width, int height) {
   Mat column_mean;
 
   // Take mean of each column
-  cv::reduce(output, column_mean, 0, REDUCE_AVG);
+  cv::reduce(output, column_mean, 0, cv::REDUCE_AVG);
 
   // Mat to hold the thresholded 1-D mean divergence array
   Mat thresholded_divergence;
@@ -285,7 +308,7 @@ void opencv_main(char *img, int width, int height) {
   // Threshold it;
   // inverse means below threshold is set to 1; otherwise to 0
   // src, dst, threshold, max_value, method
-  cv::threshold(column_mean, thresholded_divergence, DET_THRESHOLD, 1, THRESH_BINARY_INV);
+  cv::threshold(column_mean, thresholded_divergence, param_DET_THRESHOLD, 1, THRESH_BINARY_INV);
 
   int lowest_detection_index = find_best_direction_index(thresholded_divergence);
 
