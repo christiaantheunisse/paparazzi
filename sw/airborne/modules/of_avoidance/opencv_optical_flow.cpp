@@ -37,6 +37,7 @@ using namespace cv;
 #include "modules/computer_vision/cv.h"
 #include <algorithm>
 #include <stdlib.h>
+#include "pthread.h"
 
 #ifndef DET_THRESHOLD
 #define DET_THRESHOLD 0.2
@@ -314,8 +315,12 @@ void opencv_main(char *img, int width, int height) {
   // src, dst, threshold, max_value, method
   cv::threshold(column_mean, thresholded_divergence, param_DET_THRESHOLD, 1, THRESH_BINARY_INV);
 
-  lowest_detection_index = find_best_direction_index(thresholded_divergence);
+  int local_lowest_detection_index = find_best_direction_index(thresholded_divergence);
+
+  pthread_mutex_lock(&mutex);
+  lowest_detection_index = local_lowest_detection_index;
   new_result = true;
+  pthread_mutex_unlock(&mutex);
 
 }
 
@@ -359,14 +364,24 @@ void OF_init(void) {
 
 void OF_periodic(void) {
 
-  if (new_result) {
+  bool local_new_result;
+  int local_lowest_detection_index;
+
+  pthread_mutex_lock(&mutex);
+  local_new_result = new_result;
+  local_lowest_detection_index = lowest_detection_index;
+  pthread_mutex_unlock(&mutex);
+
+  if (local_new_result) {
     // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // ABI broadcast of best direction index
-    AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, lowest_detection_index);
+    AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, local_lowest_detection_index);
 
+    pthread_mutex_lock(&mutex);
     new_result = false;
-    
+    pthread_mutex_unlock(&mutex);
+
   }
 
 }
