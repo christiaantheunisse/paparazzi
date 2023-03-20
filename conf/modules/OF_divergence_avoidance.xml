@@ -6,17 +6,16 @@
     2023 autonomous flight of micro air vehicles course.
     </description>
 
-    <define name="OPENCVDEMO_CAMERA" value="front_camera|bottom_camera" description="Video device to use"/>
-    <define name="OPENCVDEMO_FPS" value="0" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
+    <define name="OFF_CAMERA" value="front_camera|bottom_camera" description="Video device to use"/>
+    <define name="OFF_FPS" value="0" description="The (maximum) frequency to run the calculations at. If zero, it will max out at the camera frame rate"/>
   </doc>
   <header>
-    <file name="cv_opencvdemo.h"/>
+    <file name="of_avoidance.h"/>
   </header>
-  <init fun="opencvdemo_init()"/>
+  <init fun="of_avoidance_init()"/>
   <makefile target="ap">
-    <file name="cv_opencvdemo.c"/>
-    <file name="opencv_example.cpp"/>
-    <file name="opencv_image_functions.cpp"/>
+    <file name="of_avoidance.c"/>
+    <file name="opencv_optical_flow.cpp"/>
     <flag name="CXXFLAGS" value="I$(PAPARAZZI_SRC)/sw/ext/opencv_bebop/install_arm/include"/>
     
     <flag name="LDFLAGS" value="L$(PAPARAZZI_HOME)/sw/ext/opencv_bebop/install_arm/lib"/>
@@ -35,9 +34,8 @@
     <flag name="LDFLAGS" value="lrt"/>
   </makefile>
   <makefile target="nps">
-    <file name="cv_opencvdemo.c"/>
-    <file name="opencv_example.cpp"/>
-    <file name="opencv_image_functions.cpp"/>
+    <file name="of_avoidance.c"/>
+    <file name="opencv_optical_flow.cpp"/>
     
     <flag name="CXXFLAGS" value="I$(PAPARAZZI_SRC)/sw/ext/opencv_bebop/install_pc/include"/>
     

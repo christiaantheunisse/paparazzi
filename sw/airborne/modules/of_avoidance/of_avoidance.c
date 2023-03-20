@@ -25,18 +25,19 @@
 
 #include "modules/computer_vision/cv.h"
 #include "modules/computer_vision/of_avoidance.h"
+#include "modules/core/abi.h"
 // #include "modules/computer_vision/opencv_example.h"
 
 // TODO: add ABI broadcast listener and function which responds to a new
 // direction index being published by the image processor. In this function,
 // run Adam's code to process the index and determine where to go.
 
-#ifndef OPENCVDEMO_FPS
-#define OPENCVDEMO_FPS 0       ///< Default FPS (zero means run at camera fps)
+#ifndef OOFF_FPS
+#define OFF_FPS 0       ///< Default FPS (zero means run at camera fps)
 #endif
-PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
+PRINT_CONFIG_VAR(OFF_FPS)
 
-// Function
+// BELOW IS WHAT PASSES THE IMAGE TO THE IMAGE PROCESSING CODE
 struct image_t *opencv_func(struct image_t *img, uint8_t camera_id);
 struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
 {
@@ -51,8 +52,7 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
   return NULL;
 }
 
-void opencvdemo_init(void)
+void of_avoidance_init(void)
 {
-  cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
+  cv_add_to_device(&OFF_CAMERA, opencv_func, OFF_FPS, 0);
 }
-

@@ -33,6 +33,8 @@ using namespace std;
 #include <opencv2/imgproc/imgproc.hpp>
 using namespace cv;
 #include "opencv_image_functions.h"
+#include "modules/core/abi.h"
+#include "modules/computer_vision/cv.h"
 #include <algorithm>
 #include <stdlib.h>
 
@@ -124,7 +126,9 @@ int param_PREFERRED_INDEX = PREFERRED_INDEX;
 double param_SIDE_PENALTY = SIDE_PENALTY;
 
 Mat old_frame_grayscale;
-double detectionHistory[N_DIRBLOCKS] = {};
+double detection_history[N_DIRBLOCKS] = {};
+int lowest_detection_index = 0;
+bool new_result = false;
 
 int find_best_direction_index(const cv::Mat &detection_horizon) {
 
@@ -310,15 +314,16 @@ void opencv_main(char *img, int width, int height) {
   // src, dst, threshold, max_value, method
   cv::threshold(column_mean, thresholded_divergence, param_DET_THRESHOLD, 1, THRESH_BINARY_INV);
 
-  int lowest_detection_index = find_best_direction_index(thresholded_divergence);
-
-  // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  // ABI broadcast of best direction index
+  lowest_detection_index = find_best_direction_index(thresholded_divergence);
+  new_result = true;
 
 }
 
 
+
+
+// BELOW IS CODE FROM THE OLD EXAMPLE FILE
+// LEFT IT HERE FOR INSPIRATION. REMOVE LATER.
 int opencv_example(char *img, int width, int height)
 {
   // Create a new image, using the original bebop image.
@@ -344,4 +349,24 @@ int opencv_example(char *img, int width, int height)
 #endif // OPENCVDEMO_GRAYSCALE
 
   return 0;
+}
+
+void OF_init(void) {
+
+  cv_add_to_device(&OFF_CAMERA, opencv_main, OFF_FPS, 0);
+
+}
+
+void OF_periodic(void) {
+
+  if (new_result) {
+    // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // ABI broadcast of best direction index
+    AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, lowest_detection_index);
+
+    new_result = false;
+    
+  }
+
 }

@@ -612,4 +612,11 @@
 #define VEL_SP_FCR_ID 1 // Approach Moving Target
 #endif
 
+/*
+ * IDs of detection horizon index sender(s) (message 37)
+ */
+#ifndef OFF_DIV_SAFE_INDEX
+#define OFF_DIV_SAFE_INDEX 1
+#endif
+
 #endif /* ABI_SENDER_IDS_H */

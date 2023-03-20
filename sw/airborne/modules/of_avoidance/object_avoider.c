@@ -101,9 +101,12 @@ void object_avoider_init(void)
   // bind our colorfilter callbacks to receive the color filter outputs
 
   //CHANGE TO GRAB LOWESTFILTEREDINDEX!!!!!!
+  // NOTE 20-3-2023 14:18 - Added Abi message for DIVERGENCE_SAFE_HEADING
+  // Just need to 'make' the correct c and h header files (according to what is said
+  // in paparazzi tutorial pdf)
 
 
-  AbiBindMsgVISUAL_DETECTION(OBJECT_AVOIDER_VISUAL_DETECTION_ID, &lowestFilteredIndex, color_detection_cb);
+  AbiBindMsgDIVERGENCE_SAFE_HEADING(OBJECT_AVOIDER_VISUAL_DETECTION_ID, &lowestFilteredIndex, color_detection_cb);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
