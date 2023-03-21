@@ -24,9 +24,11 @@
  */
 
 #include "modules/computer_vision/cv.h"
-#include "modules/computer_vision/of_avoidance.h"
+//#include "modules/computer_vision/of_avoidance.h"
+#include "of_avoidance.h"
 // #include "modules/computer_vision/opencv_example.h"
 
+#include <stdio.h>
 // TODO: add ABI broadcast listener and function which responds to a new
 // direction index being published by the image processor. In this function,
 // run Adam's code to process the index and determine where to go.
@@ -44,6 +46,7 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
     opencv_main((char *) img->buf, img->w, img->h);
+//    printf("Function called when a new image is recieved");
   }
 
 // opencv_example(NULL, 10,10);

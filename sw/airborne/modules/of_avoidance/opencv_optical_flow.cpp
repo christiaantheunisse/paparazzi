@@ -25,12 +25,12 @@
 
 
 #include "opencv_optical_flow.h"
-
-
+#include <stdio.h>
 
 using namespace std;
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/video/tracking.hpp>
 using namespace cv;
 #include "opencv_image_functions.h"
 #include <algorithm>
@@ -82,17 +82,18 @@ int param_OFF_POLY_N = OFF_POLY_N;
 double param_OFF_POLY_SIGMA = OFF_POLY_SIGMA;
 double param_OFF_FLAGS = OFF_FLAGS;
 
+// Current values: Use full width and for the height [25, 125] out of 520 pixels
 #ifndef CROP_X
 #define CROP_X 0
 #endif
 #ifndef CROP_Y
-#define CROP_Y 25
+#define CROP_Y 12
 #endif
 #ifndef CROP_WIDTH
-#define CROP_WIDTH 320
+#define CROP_WIDTH 260
 #endif
 #ifndef CROP_HEIGHT
-#define CROP_HEIGHT 125
+#define CROP_HEIGHT 50
 #endif
 
 int param_CROP_X = CROP_X;
@@ -124,7 +125,7 @@ int param_PREFERRED_INDEX = PREFERRED_INDEX;
 double param_SIDE_PENALTY = SIDE_PENALTY;
 
 Mat old_frame_grayscale;
-double detectionHistory[N_DIRBLOCKS] = {};
+double detection_history[N_DIRBLOCKS] = {};
 
 int find_best_direction_index(const cv::Mat &detection_horizon) {
 
@@ -256,21 +257,40 @@ void opencv_main(char *img, int width, int height) {
 
   // Cast the image struct into an opencv Mat
   Mat frame(height, width, CV_8UC2, img);
+    // Rotate
+    cv::Point2f center(frame.cols/2., frame.cols/2.);
+    cv::Mat r = cv::getRotationMatrix2D(center, 90, 1.0);
+    cv::warpAffine(frame, frame, r, cv::Size(frame.rows, frame.cols));
 
-  // Initialize Mat to hold grayscale version of image
+    // Initialize Mat to hold grayscale version of image
   Mat frame_grayscale, gray_resized;
+
 
   // Convert to grayscale and put in previously defined Mat
   cv::cvtColor(frame, frame_grayscale, CV_YUV2GRAY_Y422);
 
+  // DEBUG STEP
+  // grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
+   printf("frame_grayscale:\n\theight: %d\n\twidth: %d\n", frame_grayscale.size().height, frame_grayscale.size().width);
+  // height: 520, width: 240
+
   // Resize gray frame
   cv::resize(frame_grayscale, gray_resized, Size(), param_RESIZE_FX, param_RESIZE_FY);
+  //  printf("gray_resized:\n\theight: %d\n\twidth: %d\n", gray_resized.size().height, gray_resized.size().width);
+  // height: 260, width: 120 [param_RESIZE_FX = 0.5, param_RESIZE_FY = 0.5]
 
   // Define cropped region (x, y, width, height)
   cv::Rect cropped_region(param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
+//  printf("cropped_region:\n\theight: %d\n\twidth: %d\n", cropped_region.height, cropped_region.width);
+  // current height: 260, width: 50 [CROP_X = 58, CROP_Y = 0, CROP_WIDTH = 50, CROP_HEIGHT = 260]
 
   // Crop frame to smaller region
-  Mat cropped_gray_frame = grayResized(cropped_region);
+  Mat cropped_gray_frame = gray_resized(cropped_region);
+//  printf("cropped_gray_frame:\n\theight: %d\n\twidth: %d\n", cropped_gray_frame.size().height, cropped_gray_frame.size().width);
+  // current height: 260, width: 50
+
+  // DEBUG STEP -> Does not work because the video expects a size of 240 x 520
+//  grayscale_opencv_to_yuv422(cropped_gray_frame, img, width, height);
 
   // If there is no previous frame (i.e. the drone just started up)
   // set this frame to be old frame also
@@ -286,6 +306,35 @@ void opencv_main(char *img, int width, int height) {
   // Calculate optical flow using old gray frame and new gray frame. Store in flowUmat
   // prev, next, src, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
   cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, param_OFF_PYR_SCALE, param_OFF_LEVELS, param_OFF_WINSIZE, param_OFF_ITERATIONS, param_OFF_POLY_N, param_OFF_POLY_SIGMA, param_OFF_FLAGS);
+//  printf("Flow_field:\nheight: %d\nwidth: %d\nchannels: %d\n", debug_FF.rows, debug_FF.cols, debug_FF.channels());
+
+    // visualization
+//    Mat flow_parts[2];
+//    split(flow_field, flow_parts);
+//    printf("\nOF: ");
+//    for(int i=0; i<flow_field.cols; i++)
+//        for(int j=0; j<flow_field.rows; j++)
+//            printf(" %f", flow_field.at<float>(j, i));
+//    printf("\n\n\n");
+
+//    Mat magnitude, angle, magn_norm;
+//    cartToPolar(flow_parts[0], flow_parts[1], magnitude, angle, true);
+//    normalize(magnitude, magn_norm, 0.0f, 1.0f, NORM_MINMAX);
+//    angle *= ((1.f / 360.f) * (180.f / 255.f));
+//    //build hsv image
+//    Mat _hsv[3], hsv, hsv8, bgr;
+//    _hsv[0] = angle;
+//    _hsv[1] = Mat::ones(angle.size(), CV_32F);
+//    _hsv[2] = magn_norm;
+//    merge(_hsv, 3, hsv);
+//    hsv.convertTo(hsv8, CV_8U, 255.0);
+//    cvtColor(hsv8, bgr, COLOR_HSV2BGR);
+//    imshow("frame2", bgr);
+//    int keyboard = waitKey(30);
+//    if (keyboard == 'q' || keyboard == 27)
+//        break;
+//    prvs = next;
+
 
   // Copy this frame to the oldGray Mat, to be used in next frame
   cropped_gray_frame.copyTo(old_frame_grayscale);
@@ -295,6 +344,7 @@ void opencv_main(char *img, int width, int height) {
 
   // Calculate divergence from flow
   output = calculate_divergence(flow_field);
+    printf("Divergence: h = %d, w = %d, c = %d", output.rows, output.cols, output.channels());
 
   // Mat to hold the mean for each image column
   Mat column_mean;
@@ -302,13 +352,138 @@ void opencv_main(char *img, int width, int height) {
   // Take mean of each column
   cv::reduce(output, column_mean, 0, cv::REDUCE_AVG);
 
+
+
   // Mat to hold the thresholded 1-D mean divergence array
   Mat thresholded_divergence;
+
+//    printf("\nDivergence: ");
+//    for(int i=0; i<column_mean.cols; i++)
+//        printf(" %d", column_mean.at<float>(0, i));
+//    printf("\n\n\n");
 
   // Threshold it;
   // inverse means below threshold is set to 1; otherwise to 0
   // src, dst, threshold, max_value, method
   cv::threshold(column_mean, thresholded_divergence, param_DET_THRESHOLD, 1, THRESH_BINARY_INV);
+//  printf("Thresholded div:\nheight: %d\nwidth: %d\nchannels: %d\n", thresholded_divergence.rows, thresholded_divergence.cols, thresholded_divergence.channels());
+
+//    printf("Columnmean: h = %d, w = %d, c = %d", column_mean.rows, column_mean.cols, column_mean.channels());
+//
+//    printf("\nOF: ");
+//    for(int i=0; i<thresholded_divergence.cols; i++)
+//        for(int j=0; j<thresholded_divergence.rows; j++)
+//            printf(" %f", thresholded_divergence.at<float>(j, i));
+//    printf("\n\n\n");
+  // Display the divergence in the bottom of the image
+
+  // Size up to an bigger image
+  Mat divergence_img;
+
+
+  cv::resize(thresholded_divergence, divergence_img, Size(520, 50));
+//    int size_1[3] = {divergence_img.rows, divergence_img.cols, 1};
+//    Mat divergence_img_;
+//    cv::resize(divergence_img, divergence_img_, cv::Size(520, 50, ))
+
+//    Mat divergence_img_zeros = Mat::zeros(divergence_img.rows, divergence_img.cols, divergence_img.type());
+//    Mat divergence_img_out;
+//    Mat in[2] = { divergence_img,divergence_img_zeros};
+//    merge(in, 2, divergence_img_out);
+//    printf("div img_ (h, w, c, d): %d, %d, %d, %d\n", divergence_img_out.rows, divergence_img_out.cols, divergence_img_out.channels(), divergence_img_out.dims);
+
+//    std::vector<cv::Mat> vChannels;
+//    for (unsigned int c = 0; c < 2; c++)
+//    {
+//        vChannels.push_back(divergence_img);
+//    }
+//    cv::Mat divergence_img_2;
+//    cv::merge(vChannels, divergence_img_2);
+
+
+//  Mat divergence_img_(3, {divergence_img.rows, divergence_img.cols, 1}, divergence_img.type(), divergence_img.data);
+//  cv::cvtColor(divergence_img, divergence_img, CV_GRAY2YUV);
+//  cv::cvtColor(divergence_img, divergence_img, CV_YUV2BGR_Y422);
+//    divergence_img_out.convertTo(divergence_img_out, CV_8U);
+//    for(int i=0; i<divergence_img_out.cols; i++)
+//        for(int j=0; j<divergence_img_out.rows; j++)
+//            printf(" (%d %d)", divergence_img_out.at<uchar>(j, i, 0), divergence_img_out.at<uchar>(j, i, 1));
+//    printf("\n\n\n");
+
+//  printf("div img (h, w, d): %d, %d, %d\n", divergence_img_out.rows, divergence_img_out.cols, divergence_img_out.channels());
+//  printf("frame (h, w, d): %d, %d, %d\n\n", frame.rows, frame.cols, frame.channels());
+//    divergence_img_out.copyTo(frame(cv::Rect(0, 190, divergence_img_out.cols, divergence_img_out.rows)));
+//    printf("COPIED");
+//    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame.rows, frame.cols, frame.channels());
+
+    divergence_img = divergence_img * 255;
+    printf("div before insert (h, w, d): %d, %d, %d\n\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
+    printf("frame before insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
+    divergence_img.convertTo(divergence_img, CV_8U);
+    divergence_img.copyTo(frame_grayscale(cv::Rect(0, 190, divergence_img.cols, divergence_img.rows)));
+    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
+//  // Rotate back
+  cv::Point2f center_inv(frame_grayscale.rows/2., frame_grayscale.rows/2.);
+  cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
+  cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
+  printf("ROTATED");
+//  cv::cvtColor(frame, frame, CV_YUV2BGR_Y422);
+//    colorbgr_opencv_to_yuv422(frame, img, width, height);
+    grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
+  printf("After Color converted");
+
+
+  //outputBGRScale.copyTo(frame(cv::Rect(0, frame.rows - outputBGRScale.rows, outputBGRScale.cols, outputBGRScale.rows)));
+
+
+//  // Rotate
+//  cv::Point2f center(divergence_img.cols/2, divergence_img.rows/2);
+//  cv::Mat r = cv::getRotationMatrix2D(center, 90, 1);
+//  cv::warpAffine(divergence_img, divergence_img, r, cv::Size(divergence_img.rows, divergence_img.cols));
+//
+//  // USE GRAYSCALE
+//  divergence_img = divergence_img * 255;
+//  divergence_img.copyTo(frame_grayscale(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
+//  grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
+//
+//  printf("\nDivergence: ");
+//  for(int i=0; i<thresholded_divergence.cols; i++)
+//      printf(" %d", thresholded_divergence.at<uchar>(0, i));
+//  printf("\n\n\n");
+//    printf("Image: ");
+//    for(int i=0; i<frame.cols; i++)
+//        printf(" %d", frame.at<float>(120, i));
+//    printf("\n\n");
+
+
+//  grayscale_opencv_to_yuv422(divergence_img, img, width, height);
+
+
+////  cv::cvtColor(divergence_img, divergence_img, CV_GRAY2BGR);
+//  divergence_img = divergence_img * 255;
+//  printf("Div image:\nheight: %d\nwidth: %d\nchannels: %d\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
+//  cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_Y422);
+//  printf("frame:\nheight: %d\nwidth: %d\nchannels: %d\ndepth: %d\n", frame.rows, frame.cols, frame.channels(), frame.depth());
+////  Mat combined_imgs(frame, cv::Rect(0, 0, divergence_img.cols, divergence_img.rows));
+////  divergence_img.copyTo(combined_imgs);
+//  divergence_img.copyTo(frame(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
+//  printf("frame:\nheight: %d\nwidth: %d\nchannels: %d\ndepth: %d\n", frame.rows, frame.cols, frame.channels(), frame.depth());
+//  colorbgr_opencv_to_yuv422(frame, img, width, height);
+//
+//
+
+//    Mat divergence_img;
+//    cv::resize(thresholded_divergence, divergence_img, Size(240, 520));
+//    divergence_img.convertTo(divergence_img, CV_8U);
+//    cv::cvtColor(divergence_img, divergence_img, cv::COLOR_GRAY2BGR);
+//
+//    cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_Y422);
+//
+//    divergence_img.copyTo(frame(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
+//
+//    colorbgr_opencv_to_yuv422(frame, img, width, height);
+
+
 
   int lowest_detection_index = find_best_direction_index(thresholded_divergence);
 
