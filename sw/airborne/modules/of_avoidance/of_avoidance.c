@@ -41,9 +41,10 @@
 #endif
 PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 
-#ifndef OFF_DIV_SAFE_INDEX
-#define OFF_DIV_SAFE_INDEX 1
-#endif
+// DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID defined in sw/airborne/modules/core/abi_sender_divs.h
+//#ifndef OFF_DIV_SAFE_INDEX
+//#define OFF_DIV_SAFE_INDEX DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID
+//#endif
 
 static pthread_mutex_t mutex; // Handles the lock of the memory
 struct ABI_message_type { // Define struct
@@ -95,9 +96,10 @@ void OF_periodic(void) {
 
 
     if (local_ABI_message.new_result) {
-        printf("\nIn the periodic funcion of im proc (rate = 50Hz):\n   Sended: %d\n", local_ABI_message.lowest_detection_index);
+//        printf("OF_periodic output:   %d\n", local_ABI_message.lowest_detection_index);
         // ABI broadcast
-        AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, local_ABI_message.lowest_detection_index);
+        // DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID defined in sw/airborne/modules/core/abi_sender_divs.h
+        AbiSendMsgDIVERGENCE_SAFE_HEADING(DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID, local_ABI_message.lowest_detection_index);
 
         pthread_mutex_lock(&mutex);
         global_ABI_message.new_result = false;

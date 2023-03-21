@@ -43,6 +43,7 @@ static uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 static uint8_t increase_nav_heading(float incrementDegrees);
+static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe);
 
 enum navigation_state_t {
   SAFE,
@@ -64,8 +65,7 @@ int16_t largeLeft = 0;
 int16_t smallLeft = 1;
 int16_t smallRight = 3;
 
-// Global var with lowest index
-uint8_t lowest_index = 120;
+
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
@@ -78,13 +78,19 @@ const int16_t max_trajectory_confidence = 5; // number of consecutive negative o
  * in different threads. The ABI event is triggered every time new data is sent out, and as such the function
  * defined in this file does not need to be explicitly called, only bound in the init function
  */
-#ifndef OFF_DIV_SAFE_INDEX
-#define OFF_DIV_SAFE_INDEX 1
-#endif
+
 static abi_event lowestFilteredIndex;
-//static void
+// Global var with lowest index
+uint8_t lowest_index = 120;
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ABI DIVERGENCE_SAFE_HEADING callback
+// Callback should always have `uint8_t sender_id`
+static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe) {
+//    printf("ABI receives new index: %d", i_safe);
+    lowest_index = i_safe;
+}
 
 
 
@@ -97,8 +103,8 @@ void object_avoider_init(void)
   srand(time(NULL));
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Does not need a callback. Can directly feed it the uint8_t var
-  AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, lowest_index);
+  // ABI_BROADCAST = 255 = receive messages from all senders on DIVERGENCE_SAFE_HEADING
+  AbiBindMsgDIVERGENCE_SAFE_HEADING(ABI_BROADCAST, &lowestFilteredIndex, lowest_index_cb);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
@@ -113,7 +119,6 @@ void object_avoider_periodic(void)
   }
 
   printf("The lowest index received in the autopilot: %d\n", lowest_index);
-  
 
   ///////////////////////////////////////////////////////////////////////////////////
   // compute current color thresholds
@@ -164,15 +169,15 @@ if(lowest_index == centerTheshold){
       //waypoint_move_here_2d(WP_TRAJECTORY);
 
       // change heading towards the location of lowest optical divergence
-      if (lowest_index = largeLeft) {
+      if (lowest_index == largeLeft) {
         angle = -20;
         heading_increment = -5;
 
-      } else if (lowest_index = smallLeft) {
+      } else if (lowest_index == smallLeft) {
         angle = -10;
         heading_increment = -5;
 
-      } else if (lowest_index = smallRight) {
+      } else if (lowest_index == smallRight) {
         angle = 10;
         heading_increment = 5;
 
