@@ -487,9 +487,7 @@ int opencv_main(char *img, int width, int height) {
 
   int lowest_detection_index = find_best_direction_index(thresholded_divergence);
 
-  // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  // ABI broadcast of best direction index
+
   return lowest_detection_index;
 }
 

@@ -76,8 +76,8 @@ const int16_t max_trajectory_confidence = 5; // number of consecutive negative o
  * in different threads. The ABI event is triggered every time new data is sent out, and as such the function
  * defined in this file does not need to be explicitly called, only bound in the init function
  */
-#ifndef OBJECT_AVOIDER_VISUAL_DETECTION_ID
-#define OBJECT_AVOIDER_VISUAL_DETECTION_ID ABI_BROADCAST
+#ifndef OFF_DIV_SAFE_INDEX
+#define OFF_DIV_SAFE_INDEX 1
 #endif
 static abi_event lowestFilteredIndex;
 static void 
@@ -103,7 +103,7 @@ void object_avoider_init(void)
   //CHANGE TO GRAB LOWESTFILTEREDINDEX!!!!!!
 
 
-  AbiBindMsgVISUAL_DETECTION(OBJECT_AVOIDER_VISUAL_DETECTION_ID, &lowestFilteredIndex, color_detection_cb);
+  AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, &lowestFilteredIndex, color_detection_cb);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 

@@ -28,6 +28,9 @@
 #include "of_avoidance.h"
 // #include "modules/computer_vision/opencv_example.h"
 
+#include "modules/core/abi.h"
+#include "pthread.h"
+
 #include <stdio.h>
 // TODO: add ABI broadcast listener and function which responds to a new
 // direction index being published by the image processor. In this function,
@@ -37,6 +40,18 @@
 #define OPENCVDEMO_FPS 0       ///< Default FPS (zero means run at camera fps)
 #endif
 PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
+
+#ifndef OFF_DIV_SAFE_INDEX
+#define OFF_DIV_SAFE_INDEX 1
+#endif
+
+static pthread_mutex_t mutex; // Handles the lock of the memory
+struct ABI_message_type { // Define struct
+    int lowest_detection_index;
+    bool new_result;
+};
+// Shared by video thread and autopilot thread
+struct ABI_message_type global_ABI_message; // Make a global var of type ABI_message_type (the custom struct)
 
 // Function
 struct image_t *opencv_func(struct image_t *img, uint8_t camera_id);
@@ -48,16 +63,47 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
     int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
 
       printf("Lowest index: %d\n", lowest_index_tmp);
-      // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // ABI broadcast of best direction index
+      pthread_mutex_lock(&mutex);
+      global_ABI_message.lowest_detection_index = lowest_index_tmp;
+      global_ABI_message.new_result = true;
+      pthread_mutex_unlock(&mutex);
+
   }
 
   return NULL;
 }
 
-void opencvdemo_init(void)
+void OF_init(void)
 {
-  cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
+    pthread_mutex_init(&mutex, NULL);
+    global_ABI_message.lowest_detection_index = 0;
+    global_ABI_message.new_result = false;
+
+    cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
 }
 
+// IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// ABI broadcast of best direction index
+void OF_periodic(void) {
+    // Copy the global var to a local var
+    struct ABI_message_type local_ABI_message;
+
+    pthread_mutex_lock(&mutex);
+    local_ABI_message.new_result = global_ABI_message.new_result;
+    local_ABI_message.lowest_detection_index = global_ABI_message.lowest_detection_index;
+    pthread_mutex_unlock(&mutex);
+
+    printf("\nIn the periodic funcion (rate = 50Hz):");
+    if (local_ABI_message.new_result) {
+        printf(" TRUE\n");
+        // ABI broadcast
+        AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, local_ABI_message.lowest_detection_index);
+
+        pthread_mutex_lock(&mutex);
+        global_ABI_message.new_result = false;
+        pthread_mutex_unlock(&mutex);
+
+    }
+
+}
