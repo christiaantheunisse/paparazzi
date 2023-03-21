@@ -64,11 +64,30 @@ int16_t centerTheshold = 2;
 int16_t largeLeft = 0;
 int16_t smallLeft = 1;
 int16_t smallRight = 3;
+int new_heading_index = 0;
 
+#ifndef N_DIRBLOCKS
+#define N_DIRBLOCKS 5
+#endif
 
+#ifndef FOV_ANGLE
+#define FOV_ANGLE 160
+#endif
+
+#ifndef DIR_CHANGE_THRESHOLD
+#define DIR_CHANGE_THRESHOLD 10
+#endif
+
+#ifndef PAUSE_TIME
+#define PAUSE_TIME 20
+#endif
+
+int param_DIR_CHANGE_THRESHOLD = DIR_CHANGE_THRESHOLD;
+int param_FOV_ANGLE = FOV_ANGLE;
+int param_N_DIRBLOCKS = N_DIRBLOCKS;
+int direction_accumulator[N_DIRBLOCKS] = {0};
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
@@ -89,7 +108,20 @@ uint8_t lowest_index = 120;
 // Callback should always have `uint8_t sender_id`
 static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe) {
 //    printf("ABI receives new index: %d", i_safe);
-    lowest_index = i_safe;
+    for (int i = 0; i < N_DIRBLOCKS; i++) {
+        if (i == i_safe) {
+            direction_accumulator[i]++;
+            if (direction_accumulator[i] == param_DIR_CHANGE_THRESHOLD) {
+                navigation_state = OBSTACLE_FOUND;
+                new_heading_index = i_safe;
+            }
+        } else {
+            if (direction_accumulator[i] != 0) {
+                direction_accumulator[i]--;
+            }
+
+        }
+    }
 }
 
 
@@ -113,112 +145,93 @@ void object_avoider_init(void)
  */
 void object_avoider_periodic(void)
 {
-  // only evaluate our state machine if we are flying
-  if(!autopilot_in_flight()){
+    // only evaluate our state machine if we are flying
+    if(!autopilot_in_flight()){
+        return;
+    }
+
+//    float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
+    float moveDistance = fminf(maxDistance, 0.5f);
+    int angle;
+
+    switch (navigation_state){
+        case SAFE:
+            // Move waypoint forward
+            moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
+            if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
+                navigation_state = OUT_OF_BOUNDS;
+            } else {
+                moveWaypointForward(WP_GOAL, moveDistance);
+            }
+
+            break;
+        case OBSTACLE_FOUND:
+            // stop
+            //waypoint_move_here_2d(WP_GOAL);
+            //waypoint_move_here_2d(WP_TRAJECTORY);
+
+            // change heading towards the location of lowest optical divergence
+
+
+
+            // if (new_heading == largeLeft) {
+            //   angle = -20;
+            //   heading_increment = -5;
+
+            // } else if (lowestFilteredIndex == smallLeft) {
+            //   angle = -10;
+            //   heading_increment = -5;
+
+            // } else if (lowestFilteredIndex == smallRight) {
+            //   angle = 10;
+            //   heading_increment = 5;
+
+            // } else {
+            //   angle = 20;
+            //   heading_increment = 5;
+
+            // }
+
+            angle = (1.0 * param_FOV_ANGLE / param_N_DIRBLOCKS) * (new_heading_index + 0.5f) - (param_FOV_ANGLE) / 2.0f;
+
+            // Clear the detections for `int` * 100 ms
+            AbiSendMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, PAUSE_TIME);
+            increase_nav_heading(angle);
+
+            // navigation_state = SEARCH_FOR_SAFE_HEADING;
+            navigation_state = SAFE;
+
+            break;
+        case SEARCH_FOR_SAFE_HEADING: // Currently not used
+            increase_nav_heading(heading_increment);
+
+            // make sure we have a couple of good readings before declaring the way safe
+            if (obstacle_free_confidence >= 2){
+                navigation_state = SAFE;
+            }
+            break;
+        case OUT_OF_BOUNDS:
+            increase_nav_heading(heading_increment);
+            moveWaypointForward(WP_TRAJECTORY, 1.5f);
+
+            if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
+                // add offset to head back into arena
+                increase_nav_heading(heading_increment);
+
+                // reset safe counter
+                obstacle_free_confidence = 0;
+
+                // ensure direction is safe before continuing
+                navigation_state = SAFE;
+            }
+
+            // Clear the detections for `int` * 100 ms
+            AbiSendMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, PAUSE_TIME);
+            break;
+        default:
+            break;
+    }
     return;
-  }
-
-  printf("The lowest index received in the autopilot: %d\n", lowest_index);
-
-  ///////////////////////////////////////////////////////////////////////////////////
-  // compute current color thresholds
-  int32_t obstacle_dist_threshold = 2;
-
-  VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", obstacle_dist, obstacle_dist_threshold, navigation_state);
-
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-// update our safe confidence based on where the lowest image divergence is located 
-
-if(lowest_index == centerTheshold){
-  obstacle_free_confidence -= 2;
-  obstacle_free_confidence++;
-} else {
-  obstacle_free_confidence -= 2; // be more cautious with positive obstacle detections
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////
-
-  
-  // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
-
-  float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
-
-  switch (navigation_state){
-    case SAFE:
-      // Move waypoint forward
-      moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
-      if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
-        navigation_state = OUT_OF_BOUNDS;
-      } else if (obstacle_free_confidence == 0){
-        navigation_state = OBSTACLE_FOUND;
-      } else {
-        moveWaypointForward(WP_GOAL, moveDistance);
-      }
-
-      break;
-    case OBSTACLE_FOUND:
-      // stop
-      //waypoint_move_here_2d(WP_GOAL);
-      //waypoint_move_here_2d(WP_TRAJECTORY);
-
-      // change heading towards the location of lowest optical divergence
-      if (lowest_index == largeLeft) {
-        angle = -20;
-        heading_increment = -5;
-
-      } else if (lowest_index == smallLeft) {
-        angle = -10;
-        heading_increment = -5;
-
-      } else if (lowest_index == smallRight) {
-        angle = 10;
-        heading_increment = 5;
-
-      } else {
-        angle = 20;
-        heading_increment = 5;
-
-      }
-
-      increase_nav_heading(angle);
-
-      navigation_state = SEARCH_FOR_SAFE_HEADING;
-
-      break;
-    case SEARCH_FOR_SAFE_HEADING:
-      increase_nav_heading(heading_increment);
-
-      // make sure we have a couple of good readings before declaring the way safe
-      if (obstacle_free_confidence >= 2){
-        navigation_state = SAFE;
-      }
-      break;
-    case OUT_OF_BOUNDS:
-      increase_nav_heading(heading_increment);
-      moveWaypointForward(WP_TRAJECTORY, 1.5f);
-
-      if (InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
-        // add offset to head back into arena
-        increase_nav_heading(heading_increment);
-
-        // reset safe counter
-        obstacle_free_confidence = 0;
-
-        // ensure direction is safe before continuing
-        navigation_state = SEARCH_FOR_SAFE_HEADING;
-      }
-      break;
-    default:
-      break;
-  }
-  return;
 }
 
 /*

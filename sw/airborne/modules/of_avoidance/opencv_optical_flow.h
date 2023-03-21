@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 int opencv_example(char *img, int width, int height);
-int opencv_main(char *img, int width, int height);
+int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura);
 
 #ifdef __cplusplus
 }

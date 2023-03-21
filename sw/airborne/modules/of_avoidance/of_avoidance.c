@@ -46,6 +46,12 @@ PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 //#define OFF_DIV_SAFE_INDEX DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID
 //#endif
 
+// Pause message
+bool do_pause = false;
+int pause_dura = 0;
+static abi_event new_pause_detection;
+
+
 static pthread_mutex_t mutex; // Handles the lock of the memory
 struct ABI_message_type { // Define struct
     int lowest_detection_index;
@@ -61,9 +67,17 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
 
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
-    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
 
       pthread_mutex_lock(&mutex);
+      bool local_do_pause = do_pause;
+      int local_pause_dura = pause_dura;
+      pthread_mutex_unlock(&mutex);
+      printf("Bool: %d, pause duration:  %d", local_do_pause, local_pause_dura);
+
+    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h, local_do_pause, local_pause_dura);
+
+      pthread_mutex_lock(&mutex);
+      do_pause = false;
       global_ABI_message.lowest_detection_index = lowest_index_tmp;
       global_ABI_message.new_result = true;
       pthread_mutex_unlock(&mutex);
@@ -73,11 +87,21 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
   return NULL;
 }
 
+void pause_detection_cb(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) local_pause_dura) {
+    pthread_mutex_lock(&mutex);
+    do_pause = true;
+    pause_dura = local_pause_dura;
+    pthread_mutex_unlock(&mutex);
+}
+
 void OF_init(void)
 {
     pthread_mutex_init(&mutex, NULL);
     global_ABI_message.lowest_detection_index = 0;
     global_ABI_message.new_result = false;
+
+    // Subsribe to pause message
+    AbiBindMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, &new_pause_detection, pause_detection_cb);
 
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
 }
