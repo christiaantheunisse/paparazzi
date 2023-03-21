@@ -44,7 +44,6 @@ static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeter
 static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
 static uint8_t increase_nav_heading(float incrementDegrees);
 
-
 enum navigation_state_t {
   SAFE,
   OBSTACLE_FOUND,
@@ -65,6 +64,9 @@ int16_t largeLeft = 0;
 int16_t smallLeft = 1;
 int16_t smallRight = 3;
 
+// Global var with lowest index
+uint8_t lowest_index = 120;
+
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
 
@@ -80,10 +82,7 @@ const int16_t max_trajectory_confidence = 5; // number of consecutive negative o
 #define OFF_DIV_SAFE_INDEX 1
 #endif
 static abi_event lowestFilteredIndex;
-static void 
-
-// Access data from object detection here
-
+//static void
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -98,12 +97,8 @@ void object_avoider_init(void)
   srand(time(NULL));
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // bind our colorfilter callbacks to receive the color filter outputs
-
-  //CHANGE TO GRAB LOWESTFILTEREDINDEX!!!!!!
-
-
-  AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, &lowestFilteredIndex, color_detection_cb);
+  // Does not need a callback. Can directly feed it the uint8_t var
+  AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, lowest_index);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
@@ -116,6 +111,8 @@ void object_avoider_periodic(void)
   if(!autopilot_in_flight()){
     return;
   }
+
+  printf("The lowest index received in the autopilot: %d\n", lowest_index);
   
 
   ///////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +128,8 @@ void object_avoider_periodic(void)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 // update our safe confidence based on where the lowest image divergence is located 
-if(lowestFilteredIndex == centerTheshold){
+
+if(lowest_index == centerTheshold){
   obstacle_free_confidence -= 2;
   obstacle_free_confidence++;
 } else {
@@ -166,15 +164,15 @@ if(lowestFilteredIndex == centerTheshold){
       //waypoint_move_here_2d(WP_TRAJECTORY);
 
       // change heading towards the location of lowest optical divergence
-      if (lowestFilteredIndex = largeLeft) {
+      if (lowest_index = largeLeft) {
         angle = -20;
         heading_increment = -5;
 
-      } else if (lowestFilteredIndex = smallLeft) {
+      } else if (lowest_index = smallLeft) {
         angle = -10;
         heading_increment = -5;
 
-      } else if (lowestFilteredIndex = smallRight) {
+      } else if (lowest_index = smallRight) {
         angle = 10;
         heading_increment = 5;
 

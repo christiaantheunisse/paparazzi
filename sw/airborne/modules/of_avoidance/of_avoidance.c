@@ -62,7 +62,6 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
     // Call OpenCV (C++ from paparazzi C function)
     int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
 
-      printf("Lowest index: %d\n", lowest_index_tmp);
       pthread_mutex_lock(&mutex);
       global_ABI_message.lowest_detection_index = lowest_index_tmp;
       global_ABI_message.new_result = true;
@@ -94,9 +93,9 @@ void OF_periodic(void) {
     local_ABI_message.lowest_detection_index = global_ABI_message.lowest_detection_index;
     pthread_mutex_unlock(&mutex);
 
-    printf("\nIn the periodic funcion (rate = 50Hz):");
+
     if (local_ABI_message.new_result) {
-        printf(" TRUE\n");
+        printf("\nIn the periodic funcion of im proc (rate = 50Hz):\n   Sended: %d\n", local_ABI_message.lowest_detection_index);
         // ABI broadcast
         AbiSendMsgDIVERGENCE_SAFE_HEADING(OFF_DIV_SAFE_INDEX, local_ABI_message.lowest_detection_index);
 
