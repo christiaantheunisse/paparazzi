@@ -110,6 +110,8 @@ int param_CROP_HEIGHT = CROP_HEIGHT;
 #define M_DIRFILTER 1
 #endif
 
+int param_N_DIRBLOCKS = N_DIRBLOCKS;
+
 #ifndef PERCENTAGE_HISTORY_IMPORTANCE
 #define PERCENTAGE_HISTORY_IMPORTANCE 0.7
 #endif
@@ -126,10 +128,20 @@ double param_PERCENTAGE_HISTORY_IMPORTANCE = PERCENTAGE_HISTORY_IMPORTANCE;
 int param_PREFERRED_INDEX = PREFERRED_INDEX;
 double param_SIDE_PENALTY = SIDE_PENALTY;
 
+#ifndef OFF_DIV_SAFE_INDEX_ID
+#define OFF_DIV_SAFE_INDEX_ID 1
+#endif
+
+#ifndef OFF_PAUSE_THREAD_ID
+#define OFF_PAUSE_THREAD_ID 2
+#endif
+
 Mat old_frame_grayscale;
 double detection_history[N_DIRBLOCKS] = {};
 int lowest_detection_index = 0;
 bool new_result = false;
+bool do_pause = false;
+int pause_dura = 0;
 
 int find_best_direction_index(const cv::Mat &detection_horizon) {
 
@@ -259,6 +271,32 @@ cv::Mat calculate_divergence(const cv::Mat& flow)
 
 void opencv_main(char *img, int width, int height) {
 
+  bool local_do_pause = false;
+  int local_pause_dura = 0;
+
+  pthread_mutex_lock(&mutex);
+  local_do_pause = do_pause;
+  local_pause_dura = pause_dura;
+  pthread_mutex_unlock(&mutex);
+
+  if (local_do_pause) {
+
+    pthread_mutex_lock(&mutex);
+    do_pause = false
+    pthread_mutex_unlock(&mutex);
+  
+    std::chrono::seconds dura(local_pause_dura);
+    std::this_thread::sleep_for(dura);
+
+    for (int n = 0; n < N_DIRBLOCKS; n++) {
+
+      detection_history[n] = 0;
+
+    }
+
+  }
+
+
   // Cast the image struct into an opencv Mat
   Mat frame(height, width, CV_8UC2, img);
 
@@ -275,7 +313,7 @@ void opencv_main(char *img, int width, int height) {
   cv::Rect cropped_region(param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
 
   // Crop frame to smaller region
-  Mat cropped_gray_frame = grayResized(cropped_region);
+  Mat cropped_gray_frame = gray_resized(cropped_region);
 
   // If there is no previous frame (i.e. the drone just started up)
   // set this frame to be old frame also
@@ -356,9 +394,20 @@ int opencv_example(char *img, int width, int height)
   return 0;
 }
 
+void pause_detection_cb(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) local_pause_dura) {
+
+  pthread_mutex_lock(&mutex);
+  do_pause = true;
+  pause_dura = local_pause_dura;
+  pthread_mutex_unlock(&mutex);
+
+}
+
 void OF_init(void) {
 
   cv_add_to_device(&OFF_CAMERA, opencv_main, OFF_FPS, 0);
+
+  AbiBindMsgPAUSE_THREAD(PAUSE_THREAD_ID, &new_pause_detection, pause_detection_cb);
 
 }
 

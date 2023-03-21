@@ -619,4 +619,8 @@
 #define OFF_DIV_SAFE_INDEX 1
 #endif
 
+#ifndef OFF_PAUSE_THREAD
+#define OFF_PAUSE_THREAD 2
+#endif
+
 #endif /* ABI_SENDER_IDS_H */

@@ -75,6 +75,8 @@
       <dl_setting var=param_CROP_Y min="0" step="1" max="240" shortname="crop_y">
       <dl_setting var=param_CROP_WIDTH min="1" step="1" max="320" shortname="crop_w">
       <dl_setting var=param_CROP_HEIGHT min="1" step="1" max="240" shortname="crop_h">
+      <dl_setting var=param_FOV_ANGLE min="40" step="1" max="180" shortname="fov_angle">
+      <dl_setting var=param_DIR_CHANGE_THRESHOLD min="1" step="1" max="20" shortname="dir_chng_thr">
       <dl_setting var=param_PERCENTAGE_HISTORY_IMPORTANCE min="0" step="0.01" max="1" shortname="history_frac">
       <dl_setting var=param_PREFERRED_INDEX min="0" step="1" max="4" shortname="pref_index">
       <dl_setting var=param_SIDE_PENALTY min="0" step="0.01" max="1" shortname="side_penalty">

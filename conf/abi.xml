@@ -249,6 +249,10 @@
     <message name="DIVERGENCE_SAFE_HEADING" id="37">
       <field name="i_safe" type="uint8_t" unit="-">
     </message>
+
+    <message name="PAUSE_THREAD" id="38">
+      <field name="pause_dura" type="uint8_t" unit="s">
+    </message>
   </msg_class>
 
 </protocol>

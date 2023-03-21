@@ -39,6 +39,32 @@
 #define VERBOSE_PRINT(...)
 #endif
 
+#ifndef N_DIRBLOCKS
+#define N_DIRBLOCKS 5
+#endif
+
+#ifndef FOV_ANGLE
+#define FOV_ANGLE 80
+#endif
+
+#ifndef DIR_CHANGE_THRESHOLD
+#define DIR_CHANGE_THRESHOLD 5
+#endif
+
+#ifndef OFF_DIV_SAFE_INDEX_ID
+#define OFF_DIV_SAFE_INDEX_ID 1
+#endif
+
+#ifndef OFF_PAUSE_THREAD_ID
+#define OFF_PAUSE_THREAD_ID 2
+#endif
+
+int param_DIR_CHANGE_THRESHOLD = DIR_CHANGE_THRESHOLD;
+
+int param_FOV_ANGLE = FOV_ANGLE;
+int angle_per_block = param_FOV_ANGLE / N_DIRBLOCKS;
+int direction_accumulator[N_DIRBLOCKS] = {0};
+
 static uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters);
 static uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 static uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor);
@@ -64,6 +90,8 @@ int16_t centerTheshold = 2;
 int16_t largeLeft = 0;
 int16_t smallLeft = 1;
 int16_t smallRight = 3;
+int new_heading_index = 0;
+
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
 
@@ -79,13 +107,49 @@ const int16_t max_trajectory_confidence = 5; // number of consecutive negative o
 #ifndef OBJECT_AVOIDER_VISUAL_DETECTION_ID
 #define OBJECT_AVOIDER_VISUAL_DETECTION_ID ABI_BROADCAST
 #endif
-static abi_event lowestFilteredIndex;
+static abi_event new_direction_index;
 static void 
 
-// Access data from object detection here
+void update_trajectory_confidence(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) lowest_detection_index) {
 
+  for (int i = 0; i < N_DIRBLOCKS; i++) {
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (i == lowest_detection_index) {
+
+      direction_accumulator[i]++;
+
+      if (direction_accumulator[i] == param_DIR_CHANGE_THRESHOLD) {
+
+        navigation_state = OBSTACLE_FOUND;
+        new_heading_index = lowest_detection_index;
+
+      }
+
+    } else {
+
+      if (direction_accumulator[i] != 0) {
+
+        direction_accumulator[i]--;
+
+      }
+
+    }
+
+  }
+  // direction_accumulator[lowest_detection_index]++;
+
+  // // update our safe confidence based on where the lowest image divergence is located 
+  // if(lowest_detection_index == centerTheshold){
+  //   obstacle_free_confidence -= 2;
+  //   obstacle_free_confidence++;
+  // } else {
+  //   obstacle_free_confidence -= 2; // be more cautious with positive obstacle detections
+  // }
+
+  // bound obstacle_free_confidence
+  // Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
+
+}
 
 
 
@@ -106,7 +170,7 @@ void object_avoider_init(void)
   // in paparazzi tutorial pdf)
 
 
-  AbiBindMsgDIVERGENCE_SAFE_HEADING(OBJECT_AVOIDER_VISUAL_DETECTION_ID, &lowestFilteredIndex, color_detection_cb);
+  AbiBindMsgDIVERGENCE_SAFE_HEADING(DIVERGENCE_SAFE_HEADING_ID, &new_direction_index, update_trajectory_confidence);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
@@ -120,34 +184,6 @@ void object_avoider_periodic(void)
     return;
   }
   
-
-  ///////////////////////////////////////////////////////////////////////////////////
-  // compute current color thresholds
-  int32_t obstacle_dist_threshold = 2;
-
-  VERBOSE_PRINT("Color_count: %d  threshold: %d state: %d \n", obstacle_dist, obstacle_dist_threshold, navigation_state);
-
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-// update our safe confidence based on where the lowest image divergence is located 
-if(lowestFilteredIndex == centerTheshold){
-  obstacle_free_confidence -= 2;
-  obstacle_free_confidence++;
-} else {
-  obstacle_free_confidence -= 2; // be more cautious with positive obstacle detections
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////
-
-  
-  // bound obstacle_free_confidence
-  Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
-
   float moveDistance = fminf(maxDistance, 0.2f * obstacle_free_confidence);
 
   switch (navigation_state){
@@ -156,8 +192,6 @@ if(lowestFilteredIndex == centerTheshold){
       moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
       if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
         navigation_state = OUT_OF_BOUNDS;
-      } else if (obstacle_free_confidence == 0){
-        navigation_state = OBSTACLE_FOUND;
       } else {
         moveWaypointForward(WP_GOAL, moveDistance);
       }
@@ -169,27 +203,33 @@ if(lowestFilteredIndex == centerTheshold){
       //waypoint_move_here_2d(WP_TRAJECTORY);
 
       // change heading towards the location of lowest optical divergence
-      if (lowestFilteredIndex = largeLeft) {
-        angle = -20;
-        heading_increment = -5;
 
-      } else if (lowestFilteredIndex = smallLeft) {
-        angle = -10;
-        heading_increment = -5;
 
-      } else if (lowestFilteredIndex = smallRight) {
-        angle = 10;
-        heading_increment = 5;
 
-      } else {
-        angle = 20;
-        heading_increment = 5;
+      // if (new_heading = largeLeft) {
+      //   angle = -20;
+      //   heading_increment = -5;
 
-      }
+      // } else if (lowestFilteredIndex = smallLeft) {
+      //   angle = -10;
+      //   heading_increment = -5;
 
+      // } else if (lowestFilteredIndex = smallRight) {
+      //   angle = 10;
+      //   heading_increment = 5;
+
+      // } else {
+      //   angle = 20;
+      //   heading_increment = 5;
+
+      // }
+      int angle = (1.0 * FOV_ANGLE / N_DIRBLOCKS) * (new_heading_index + 0.5f) - (FOV_ANGLE) / 2.0f;
+
+      AbiSendMsgPAUSE_THREAD(OFF_PAUSE_THREAD, 3);
       increase_nav_heading(angle);
 
-      navigation_state = SEARCH_FOR_SAFE_HEADING;
+      // navigation_state = SEARCH_FOR_SAFE_HEADING;
+      navigation_state = SAFE;
 
       break;
     case SEARCH_FOR_SAFE_HEADING:
