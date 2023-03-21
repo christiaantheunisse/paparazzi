@@ -45,11 +45,13 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
 
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
-    opencv_main((char *) img->buf, img->w, img->h);
-//    printf("Function called when a new image is recieved");
-  }
+    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
 
-// opencv_example(NULL, 10,10);
+      printf("Lowest index: %d\n", lowest_index_tmp);
+      // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // ABI broadcast of best direction index
+  }
 
   return NULL;
 }

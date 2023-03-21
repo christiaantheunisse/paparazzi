@@ -253,7 +253,7 @@ cv::Mat calculate_divergence(const cv::Mat& flow)
   return divergence;
 }
 
-void opencv_main(char *img, int width, int height) {
+int opencv_main(char *img, int width, int height) {
 
   // Cast the image struct into an opencv Mat
   Mat frame(height, width, CV_8UC2, img);
@@ -271,7 +271,7 @@ void opencv_main(char *img, int width, int height) {
 
   // DEBUG STEP
   // grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
-   printf("frame_grayscale:\n\theight: %d\n\twidth: %d\n", frame_grayscale.size().height, frame_grayscale.size().width);
+//   printf("frame_grayscale:\n\theight: %d\n\twidth: %d\n", frame_grayscale.size().height, frame_grayscale.size().width);
   // height: 520, width: 240
 
   // Resize gray frame
@@ -344,7 +344,7 @@ void opencv_main(char *img, int width, int height) {
 
   // Calculate divergence from flow
   output = calculate_divergence(flow_field);
-    printf("Divergence: h = %d, w = %d, c = %d", output.rows, output.cols, output.channels());
+//    printf("Divergence: h = %d, w = %d, c = %d", output.rows, output.cols, output.channels());
 
   // Mat to hold the mean for each image column
   Mat column_mean;
@@ -417,20 +417,20 @@ void opencv_main(char *img, int width, int height) {
 //    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame.rows, frame.cols, frame.channels());
 
     divergence_img = divergence_img * 255;
-    printf("div before insert (h, w, d): %d, %d, %d\n\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
-    printf("frame before insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
+//    printf("div before insert (h, w, d): %d, %d, %d\n\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
+//    printf("frame before insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
     divergence_img.convertTo(divergence_img, CV_8U);
     divergence_img.copyTo(frame_grayscale(cv::Rect(0, 190, divergence_img.cols, divergence_img.rows)));
-    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
+//    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
 //  // Rotate back
   cv::Point2f center_inv(frame_grayscale.rows/2., frame_grayscale.rows/2.);
   cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
   cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
-  printf("ROTATED");
+//  printf("ROTATED");
 //  cv::cvtColor(frame, frame, CV_YUV2BGR_Y422);
 //    colorbgr_opencv_to_yuv422(frame, img, width, height);
     grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
-  printf("After Color converted");
+//  printf("After Color converted");
 
 
   //outputBGRScale.copyTo(frame(cv::Rect(0, frame.rows - outputBGRScale.rows, outputBGRScale.cols, outputBGRScale.rows)));
@@ -490,7 +490,7 @@ void opencv_main(char *img, int width, int height) {
   // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
   // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   // ABI broadcast of best direction index
-
+  return lowest_detection_index;
 }
 
 
