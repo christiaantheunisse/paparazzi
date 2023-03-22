@@ -81,15 +81,10 @@ enum navigation_state_t {
 
 // define and initialise global variables
 enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
-int32_t obstacle_dist = 0;                // Distance to closest object
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
-float angle = 0;
 float heading_increment = 5.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 int16_t centerTheshold = 2;
-int16_t largeLeft = 0;
-int16_t smallLeft = 1;
-int16_t smallRight = 3;
 int new_heading_index = 0;
 
 
@@ -136,18 +131,6 @@ void update_trajectory_confidence(uint8_t __attribute__((unused)) sender_id, uin
     }
 
   }
-  // direction_accumulator[lowest_detection_index]++;
-
-  // // update our safe confidence based on where the lowest image divergence is located 
-  // if(lowest_detection_index == centerTheshold){
-  //   obstacle_free_confidence -= 2;
-  //   obstacle_free_confidence++;
-  // } else {
-  //   obstacle_free_confidence -= 2; // be more cautious with positive obstacle detections
-  // }
-
-  // bound obstacle_free_confidence
-  // Bound(obstacle_free_confidence, 0, max_trajectory_confidence);
 
 }
 
