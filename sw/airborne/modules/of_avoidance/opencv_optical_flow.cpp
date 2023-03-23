@@ -46,10 +46,10 @@ using namespace cv;
 double param_DET_THRESHOLD = DET_THRESHOLD;
 
 #ifndef RESIZE_FX
-#define RESIZE_FX 0.5
+#define RESIZE_FX 0.5 // 0.25
 #endif
 #ifndef RESIZE_FY
-#define RESIZE_FY 0.5
+#define RESIZE_FY 0.5 // 0.25
 #endif
 
 double param_RESIZE_FX = RESIZE_FX;
@@ -65,7 +65,7 @@ double param_RESIZE_FY = RESIZE_FY;
 #define OFF_WINSIZE 10
 #endif
 #ifndef OFF_ITERATIONS
-#define OFF_ITERATIONS 3
+#define OFF_ITERATIONS 1
 #endif
 #ifndef OFF_POLY_N
 #define OFF_POLY_N 1
@@ -85,18 +85,18 @@ int param_OFF_POLY_N = OFF_POLY_N;
 double param_OFF_POLY_SIGMA = OFF_POLY_SIGMA;
 double param_OFF_FLAGS = OFF_FLAGS;
 
-// Current values: Use full width and for the height [25, 125] out of 520 pixels
+// Current values: Use full width and for the height [25, 125] out of 240 pixels
 #ifndef CROP_X
-#define CROP_X 0
+#define CROP_X 15
 #endif
 #ifndef CROP_Y
-#define CROP_Y 12
+#define CROP_Y 12 // 50 * 0.25
 #endif
 #ifndef CROP_WIDTH
-#define CROP_WIDTH 260
+#define CROP_WIDTH 100 // (520 * 0.25) - 2 * 15
 #endif
 #ifndef CROP_HEIGHT
-#define CROP_HEIGHT 50
+#define CROP_HEIGHT 12 // Total 240 -> [50, 100]
 #endif
 
 int param_CROP_X = CROP_X;
@@ -290,9 +290,10 @@ int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura)
         // Cast the image struct into an opencv Mat
         Mat frame(height, width, CV_8UC2, img);
         // Rotate
-        cv::Point2f center(frame.cols / 2., frame.cols / 2.);
-        cv::Mat r = cv::getRotationMatrix2D(center, 90, 1.0);
-        cv::warpAffine(frame, frame, r, cv::Size(frame.rows, frame.cols));
+//        cv::Point2f center(frame.cols / 2., frame.cols / 2.);
+//        cv::Mat r = cv::getRotationMatrix2D(center, 90, 1.0);
+//        cv::warpAffine(frame, frame, r, cv::Size(frame.rows, frame.cols));
+        cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
 
         // Initialize Mat to hold grayscale version of image
         Mat frame_grayscale, gray_resized;
@@ -337,9 +338,13 @@ int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura)
 
         // Calculate optical flow using old gray frame and new gray frame. Store in flowUmat
         // prev, next, src, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
+        auto start = std::chrono::high_resolution_clock::now();
         cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, param_OFF_PYR_SCALE,
                                      param_OFF_LEVELS, param_OFF_WINSIZE, param_OFF_ITERATIONS, param_OFF_POLY_N,
                                      param_OFF_POLY_SIGMA, param_OFF_FLAGS);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+        printf("Duration of rotation OF: %d\n", duration);
         //  printf("Flow_field:\nheight: %d\nwidth: %d\nchannels: %d\n", debug_FF.rows, debug_FF.cols, debug_FF.channels());
 
         // visualization
@@ -456,10 +461,15 @@ int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura)
         divergence_img.convertTo(divergence_img, CV_8U);
         divergence_img.copyTo(frame_grayscale(cv::Rect(0, 190, divergence_img.cols, divergence_img.rows)));
         //    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
-        //  // Rotate back
-        cv::Point2f center_inv(frame_grayscale.rows / 2., frame_grayscale.rows / 2.);
-        cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
-        cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
+
+
+          // Rotate back
+//        cv::Point2f center_inv(frame_grayscale.rows / 2., frame_grayscale.rows / 2.);
+//        cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
+//        cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
+        cv::rotate(frame_grayscale, frame_grayscale, cv::ROTATE_90_CLOCKWISE);
+
+
         //  printf("ROTATED");
         //  cv::cvtColor(frame, frame, CV_YUV2BGR_Y422);
         //    colorbgr_opencv_to_yuv422(frame, img, width, height);
