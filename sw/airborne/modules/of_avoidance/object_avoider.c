@@ -58,7 +58,7 @@ enum navigation_state_t navigation_state = SEARCH_FOR_SAFE_HEADING;
 int32_t obstacle_dist = 0;                // Distance to closest object
 int16_t obstacle_free_confidence = 0;   // a measure of how certain we are that the way ahead is safe.
 float angle = 0;
-float heading_increment = 5.f;          // heading angle increment [deg]
+float heading_increment = 100.f;          // heading angle increment [deg]
 float maxDistance = 2.25;               // max waypoint displacement [m]
 int16_t centerTheshold = 2;
 int16_t largeLeft = 0;
@@ -166,32 +166,6 @@ void object_avoider_periodic(void)
 
             break;
         case OBSTACLE_FOUND:
-            // stop
-            //waypoint_move_here_2d(WP_GOAL);
-            //waypoint_move_here_2d(WP_TRAJECTORY);
-
-            // change heading towards the location of lowest optical divergence
-
-
-
-            // if (new_heading == largeLeft) {
-            //   angle = -20;
-            //   heading_increment = -5;
-
-            // } else if (lowestFilteredIndex == smallLeft) {
-            //   angle = -10;
-            //   heading_increment = -5;
-
-            // } else if (lowestFilteredIndex == smallRight) {
-            //   angle = 10;
-            //   heading_increment = 5;
-
-            // } else {
-            //   angle = 20;
-            //   heading_increment = 5;
-
-            // }
-
             angle = (1.0 * param_FOV_ANGLE / param_N_DIRBLOCKS) * (new_heading_index + 0.5f) - (param_FOV_ANGLE) / 2.0f;
 
             // Clear the detections for `int` * 100 ms

@@ -61,34 +61,45 @@
       <define name="VIDEO_CAPTURE_CAMERA" value="front_camera"/>
       <define name="VIDEO_CAPTURE_FPS" value="10"/>
     </module>
-    <!-- <module name="cv_detect_color_object">
-      <define name="COLOR_OBJECT_DETECTOR_CAMERA1" value="front_camera"/>
-      <define name="COLOR_OBJECT_DETECTOR_FPS1" value="0"/>
-      <define name="COLOR_OBJECT_DETECTOR_DRAW1" value="1"/>
-    </module> -->
-    <!-- Change this to usee our module -->
-    <!-- <module name="orange_avoider">
-      <define name="ORANGE_AVOIDER_VISUAL_DETECTION_ID" value="COLOR_OBJECT_DETECTION1_ID"/>
-    </module> -->
+
+    <!-- Our pilot module -->
     <module name="object_avoider">
       <define name="OFF_DIV_SAFE_INDEX" value="37"/>
+      <!-- Autopilot settings -->
+      <define name="N_DIRBLOCKS" value="5" description="Possible heading directions"/>
+      <define name="FOV_ANGLE" value="160" description="Determines the size of the steering correction when detecting an obstacle"/>
+      <define name="DIR_CHANGE_THRESHOLD" value="8" description="Number of consequetive measurements necessary to decide to steer away"/>
+      <define name="PAUSE_TIME" value="20" description="The image detection resets and pauses for (PAUSE_TIME * 100ms) after a steer correction"/>
     </module>
+
     <module name="video_rtp_stream">
       <define name="VIEWVIDEO_CAMERA" value="front_camera"/>
       <define name="VIEWVIDEO_CAMERA2" value="bottom_camera"/>
       <define name="VIEWVIDEO_DOWNSIZE_FACTOR" value="1"/>
       <define name="VIEWVIDEO_QUALITY_FACTOR" value="40"/>
     </module>
-    <!-- Added to check a opencv example: should be removed eventually -->
-    <!-- <module name="cv_opencvdemo">
-      <define name="OPENCVDEMO_CAMERA" value="front_camera"/>
-      <define name="OPENCVDEMO_FPS" value="0" />
-    </module> 
- -->    <!-- End opencv example -->
-    <!-- Add team 2 of_avoidance opencv functions -->
+
+    <!-- Our image processing module -->
     <module name="opencv_optical_flow">
       <define name="OPENCVDEMO_CAMERA" value="front_camera"/>
       <define name="OPENCVDEMO_FPS" value="0" />
+
+      <!-- CROP window settings -->
+      <define name="RESIZE" value="0.25" description="Resize factor use for the camera image in x and y direction"/>
+      <define name="CROP_X" value="60" description="Crop offset in x-direction before resizing [0, 520]"/>
+      <define name="CROP_Y" value="50" description="Crop offset in y-direction before resizing [0, 240]"/>
+      <!-- CROP_WIDTH is not necessary since it is always symmetric around the center. Therefore CROP_X contains all the necessary info. -->
+      <define name="CROP_HEIGHT" value="50" description="Crop size in y-direction before resizing [0, 240]"/>
+
+      <!-- OF settings -->
+      <define name="OFF_PYR_SCALE" value="0.5" description="Farneback OF setting"/>
+      <define name="OFF_LEVELS" value="1" description="Farneback OF setting"/>
+      <define name="OFF_WINSIZE" value="15" description="Farneback OF setting"/>
+      <define name="OFF_ITERATIONS" value="1" description="Farneback OF setting"/>
+      <define name="OFF_POLY_N" value="7" description="Farneback OF setting"/>
+      <define name="OFF_POLY_SIGMA" value="1.2" description="Farneback OF setting"/>
+      <define name="OFF_FLAGS" value="0" description="Farneback OF setting"/>
+
     </module> 
   </firmware>
 

@@ -45,11 +45,15 @@ using namespace cv;
 
 double param_DET_THRESHOLD = DET_THRESHOLD;
 
+#ifndef RESIZE
+#define RESIZE 0.25
+#endif
+
 #ifndef RESIZE_FX
-#define RESIZE_FX 0.5 // 0.25
+#define RESIZE_FX RESIZE
 #endif
 #ifndef RESIZE_FY
-#define RESIZE_FY 0.5 // 0.25
+#define RESIZE_FY RESIZE
 #endif
 
 double param_RESIZE_FX = RESIZE_FX;
@@ -85,24 +89,23 @@ int param_OFF_POLY_N = OFF_POLY_N;
 double param_OFF_POLY_SIGMA = OFF_POLY_SIGMA;
 double param_OFF_FLAGS = OFF_FLAGS;
 
-// Current values: Use full width and for the height [25, 125] out of 240 pixels
+// Current values: Use width [60, 460] out of 520 px and for the height [50, 100] out of 240 px
+// Total [width, height] = [520, 240]
+
 #ifndef CROP_X
-#define CROP_X 15
+#define CROP_X 60
 #endif
 #ifndef CROP_Y
-#define CROP_Y 12 // 50 * 0.25
-#endif
-#ifndef CROP_WIDTH
-#define CROP_WIDTH 100 // (520 * 0.25) - 2 * 15
+#define CROP_Y 50
 #endif
 #ifndef CROP_HEIGHT
-#define CROP_HEIGHT 12 // Total 240 -> [50, 100]
+#define CROP_HEIGHT 50
 #endif
 
-int param_CROP_X = CROP_X;
-int param_CROP_Y = CROP_Y;
-int param_CROP_WIDTH = CROP_WIDTH;
-int param_CROP_HEIGHT = CROP_HEIGHT;
+int param_CROP_X = CROP_X * RESIZE_FX;
+int param_CROP_Y = CROP_Y  * RESIZE_FY;  // 50 * 0.25
+int param_CROP_WIDTH = 520 * RESIZE_FX -  2 * param_CROP_X; // (520 * 0.25) - 2 * 15 = 100
+int param_CROP_HEIGHT = CROP_HEIGHT * RESIZE_FY;  // Total 240 -> [50, 100]
 
 #ifndef N_DIRBLOCKS
 #define N_DIRBLOCKS 5
@@ -313,6 +316,7 @@ int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura)
         // height: 260, width: 120 [param_RESIZE_FX = 0.5, param_RESIZE_FY = 0.5]
 
         // Define cropped region (x, y, width, height)
+//        printf("CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT: (%d, %d, %d, %d)", param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
         cv::Rect cropped_region(param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
         //  printf("cropped_region:\n\theight: %d\n\twidth: %d\n", cropped_region.height, cropped_region.width);
         // current height: 260, width: 50 [CROP_X = 58, CROP_Y = 0, CROP_WIDTH = 50, CROP_HEIGHT = 260]
@@ -338,13 +342,21 @@ int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura)
 
         // Calculate optical flow using old gray frame and new gray frame. Store in flowUmat
         // prev, next, src, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
-        auto start = std::chrono::high_resolution_clock::now();
+
+        // FOR TIMING
+//        auto start = std::chrono::high_resolution_clock::now();
+
+
         cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, param_OFF_PYR_SCALE,
                                      param_OFF_LEVELS, param_OFF_WINSIZE, param_OFF_ITERATIONS, param_OFF_POLY_N,
                                      param_OFF_POLY_SIGMA, param_OFF_FLAGS);
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-        printf("Duration of rotation OF: %d\n", duration);
+
+        // FOR TIMING
+//        auto stop = std::chrono::high_resolution_clock::now();
+//        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+//        printf("Duration of rotation OF: %d\n", duration);
+
+
         //  printf("Flow_field:\nheight: %d\nwidth: %d\nchannels: %d\n", debug_FF.rows, debug_FF.cols, debug_FF.channels());
 
         // visualization
