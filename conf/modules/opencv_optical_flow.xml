@@ -24,6 +24,9 @@
     <define name="OFF_POLY_SIGMA" value="1.2" description="Farneback OF setting"/>
     <define name="OFF_FLAGS" value="0" description="Farneback OF setting"/>
 
+    <!-- Detection threshold -->
+    <define name="DET_THRESHOLD" value="0.14" description="Divergence cutoff threshold"/>
+
   </doc>
   <header>
     <file name="of_avoidance.h"/>

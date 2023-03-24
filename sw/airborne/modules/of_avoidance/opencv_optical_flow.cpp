@@ -40,7 +40,7 @@ using namespace cv;
 #include <thread>
 
 #ifndef DET_THRESHOLD
-#define DET_THRESHOLD 0.2
+#define DET_THRESHOLD 0.14 // for the simulator
 #endif
 
 double param_DET_THRESHOLD = DET_THRESHOLD;

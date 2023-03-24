@@ -68,7 +68,7 @@
       <!-- Autopilot settings -->
       <define name="N_DIRBLOCKS" value="5" description="Possible heading directions"/>
       <define name="FOV_ANGLE" value="160" description="Determines the size of the steering correction when detecting an obstacle"/>
-      <define name="DIR_CHANGE_THRESHOLD" value="8" description="Number of consequetive measurements necessary to decide to steer away"/>
+      <define name="DIR_CHANGE_THRESHOLD" value="6" description="Number of consequetive measurements necessary to decide to steer away"/>
       <define name="PAUSE_TIME" value="20" description="The image detection resets and pauses for (PAUSE_TIME * 100ms) after a steer correction"/>
     </module>
 
@@ -99,6 +99,9 @@
       <define name="OFF_POLY_N" value="7" description="Farneback OF setting"/>
       <define name="OFF_POLY_SIGMA" value="1.2" description="Farneback OF setting"/>
       <define name="OFF_FLAGS" value="0" description="Farneback OF setting"/>
+
+      <!-- Divergence threshold -->
+      <define name="DET_THRESHOLD" value="0.14" description="Divergence cutoff threshold"/>
 
     </module> 
   </firmware>
