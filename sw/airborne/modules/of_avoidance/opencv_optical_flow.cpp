@@ -133,9 +133,6 @@ double param_SIDE_PENALTY = SIDE_PENALTY;
 Mat old_frame_grayscale;
 double detection_history[N_DIRBLOCKS] = {};
 
-int start_time;
-int pause_duration;
-bool pausing;
 int center = N_DIRBLOCKS / 2;
 
 int find_best_direction_index(const cv::Mat &detection_horizon) {
@@ -264,26 +261,16 @@ cv::Mat calculate_divergence(const cv::Mat& flow)
   return divergence;
 }
 
-int opencv_main(char *img, int width, int height, bool do_pause, int pause_dura) {
+int opencv_main(char *img, int width, int height, int do_pause) {
 
 
-    if (do_pause) {
-        int now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        start_time = now;
-        pause_duration = pause_dura * 100; // pause_dura per 100 ms
-        pausing = true;
+    if (do_pause >= 1) {
+        // Clear detection array
         for (int n = 0; n < N_DIRBLOCKS; n++) {
             detection_history[n] = 0;
         }
         Mat empty_mat;
         old_frame_grayscale = empty_mat;
-    }
-
-    if (pausing) {
-        int now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        if (((now - start_time) >= pause_duration)) {
-            pausing = false;
-        }
 
         return center;
     } else {

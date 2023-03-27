@@ -47,8 +47,7 @@ PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 //#endif
 
 // Pause message
-bool do_pause = false;
-int pause_dura = 0;
+int do_pause = 0;
 static abi_event new_pause_detection;
 
 
@@ -69,15 +68,13 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
     // Call OpenCV (C++ from paparazzi C function)
 
       pthread_mutex_lock(&mutex);
-      bool local_do_pause = do_pause;
-      int local_pause_dura = pause_dura;
+      int local_do_pause = do_pause;
       pthread_mutex_unlock(&mutex);
-      printf("Bool: %d, pause duration:  %d", local_do_pause, local_pause_dura);
+      printf("Pause: %d", local_do_pause);
 
-    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h, local_do_pause, local_pause_dura);
+    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h, local_do_pause);
 
       pthread_mutex_lock(&mutex);
-      do_pause = false;
       global_ABI_message.lowest_detection_index = lowest_index_tmp;
       global_ABI_message.new_result = true;
       pthread_mutex_unlock(&mutex);
@@ -87,10 +84,9 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
   return NULL;
 }
 
-void pause_detection_cb(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) local_pause_dura) {
+void pause_detection_cb(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) pause_dura) {
     pthread_mutex_lock(&mutex);
-    do_pause = true;
-    pause_dura = local_pause_dura;
+    do_pause = pause_dura; // Anything bigger than 0 pauses the image processing
     pthread_mutex_unlock(&mutex);
 }
 
