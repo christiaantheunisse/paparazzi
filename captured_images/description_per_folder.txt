@@ -14,3 +14,8 @@ Images from the dataset from Brightspace. Cyberzoo with orange poles and a partl
 20190121-142935
 Images from the dataset from Brightspace. Cyberzoo with orange poles, a partly orange panel and floor mats.
 
+20230324-105918
+Grayscale images shot in the Cyberzoo on March 24 with detections in the bottom [1].
+
+20230324-110609
+Grayscale images shot in the Cyberzoo on March 24 with detections in the bottom [2].
