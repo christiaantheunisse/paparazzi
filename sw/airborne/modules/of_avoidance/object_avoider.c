@@ -24,6 +24,7 @@
 #include "modules/core/abi.h"
 #include <time.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #define NAV_C // needed to get the nav functions like Inside...
 #include "generated/flight_plan.h"
@@ -79,15 +80,22 @@ int new_heading_index = 0;
 #endif
 
 #ifndef PAUSE_TIME
-#define PAUSE_TIME 20
+#define PAUSE_TIME 15
 #endif
 
+unsigned long pause_time = PAUSE_TIME;
 int param_DIR_CHANGE_THRESHOLD = DIR_CHANGE_THRESHOLD;
 int param_FOV_ANGLE = FOV_ANGLE;
 int param_N_DIRBLOCKS = N_DIRBLOCKS;
 int direction_accumulator[N_DIRBLOCKS] = {0};
+int center_index = N_DIRBLOCKS / 2;
 
 const int16_t max_trajectory_confidence = 5; // number of consecutive negative object detections to be sure we are obstacle free
+
+// Pause vars
+bool do_pause = false;
+struct timeval start_time, now;
+//clock_t start_time, now;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
@@ -108,22 +116,38 @@ uint8_t lowest_index = 120;
 // Callback should always have `uint8_t sender_id`
 static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe) {
 //    printf("ABI receives new index: %d", i_safe);
-    for (int i = 0; i < N_DIRBLOCKS; i++) {
-        if (i == i_safe) {
-            direction_accumulator[i]++;
-            if (direction_accumulator[i] == param_DIR_CHANGE_THRESHOLD) {
-                navigation_state = OBSTACLE_FOUND;
-                new_heading_index = i_safe;
-            }
-        } else {
-            if (direction_accumulator[i] != 0) {
-                direction_accumulator[i]--;
-            }
+    printf("Pause: %d", do_pause);
+    if (!do_pause) {
+        for (int i = 0; i < N_DIRBLOCKS; i++) {
+            if (i == i_safe) {
+                direction_accumulator[i]++;
+                if (direction_accumulator[i] == param_DIR_CHANGE_THRESHOLD && i != center_index) {
+                    navigation_state = OBSTACLE_FOUND;
+                    new_heading_index = i_safe;
+                }
+            } else {
+                if (direction_accumulator[i] != 0) {
+                    direction_accumulator[i]--;
+                }
 
+            }
+        }
+    } else {
+        gettimeofday(&now, NULL);
+//        now = clock();
+        unsigned long difference = (now.tv_sec - start_time.tv_sec) * 1000000 + now.tv_usec - start_time.tv_usec;
+        printf("Difference: %lu us", difference);
+
+        if ((difference) >= (pause_time * 100 * 1000)) { // * 100 ms * 1000 (us -> ms)
+//        if ((double)(now - start_time)/CLOCKS_PER_SEC >= PAUSE_TIME) {
+            printf("STOP PAUSING ==========================");
+            do_pause = false;
+            for (int i = 0; i < N_DIRBLOCKS; i++) {
+                direction_accumulator[i] = 0;
+            }
         }
     }
 }
-
 
 
 /*
@@ -169,7 +193,10 @@ void object_avoider_periodic(void)
             angle = (1.0 * param_FOV_ANGLE / param_N_DIRBLOCKS) * (new_heading_index + 0.5f) - (param_FOV_ANGLE) / 2.0f;
 
             // Clear the detections for `int` * 100 ms
-            AbiSendMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, PAUSE_TIME);
+            do_pause = true;
+            gettimeofday(&start_time, NULL);
+//            start_time = clock();
+
             increase_nav_heading(angle);
 
             // navigation_state = SEARCH_FOR_SAFE_HEADING;
@@ -200,11 +227,14 @@ void object_avoider_periodic(void)
             }
 
             // Clear the detections for `int` * 100 ms
-            AbiSendMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, PAUSE_TIME);
+            do_pause = true;
+            gettimeofday(&start_time, NULL);
+//            start_time = clock();
             break;
         default:
             break;
     }
+
     return;
 }
 
