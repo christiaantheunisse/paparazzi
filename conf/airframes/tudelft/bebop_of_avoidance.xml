@@ -86,10 +86,10 @@
 
       <!-- CROP window settings -->
       <define name="RESIZE" value="0.25" description="Resize factor use for the camera image in x and y direction"/>
-      <define name="CROP_X" value="60" description="Crop offset in x-direction before resizing [0, 520]"/>
-      <define name="CROP_Y" value="50" description="Crop offset in y-direction before resizing [0, 240]"/>
+      <define name="CROP_X" value="0" description="Crop offset in x-direction before resizing [0, 520]"/>
+      <define name="CROP_Y" value="40" description="Crop offset in y-direction before resizing [0, 240]"/>
       <!-- CROP_WIDTH is not necessary since it is always symmetric around the center. Therefore CROP_X contains all the necessary info. -->
-      <define name="CROP_HEIGHT" value="50" description="Crop size in y-direction before resizing [0, 240]"/>
+      <define name="CROP_HEIGHT" value="70" description="Crop size in y-direction before resizing [0, 240]"/>
 
       <!-- OF settings -->
       <define name="OFF_PYR_SCALE" value="0.5" description="Farneback OF setting"/>
