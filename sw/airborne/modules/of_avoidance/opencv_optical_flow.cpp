@@ -150,7 +150,7 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
     array.assign((float*)detection_horizon.data, (float*)detection_horizon.data + detection_horizon.total() * detection_horizon.channels());
 
   // Determine pixel width of detection horizon
-  int horizon_width = detection_horizon.cols;
+  int horizon_width = detection_horizon.rows;
 
   // Determine the amount of cells that it skips per block
   int pixels_per_block = horizon_width / N_DIRBLOCKS;
@@ -272,7 +272,8 @@ int opencv_main(char *img, int width, int height) {
 //        cv::Point2f center(frame.cols / 2., frame.cols / 2.);
 //        cv::Mat r = cv::getRotationMatrix2D(center, 90, 1.0);
 //        cv::warpAffine(frame, frame, r, cv::Size(frame.rows, frame.cols));
-    cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+
+//    cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
 
     // Initialize Mat to hold grayscale version of image
     Mat frame_grayscale, gray_resized;
@@ -293,7 +294,7 @@ int opencv_main(char *img, int width, int height) {
 
     // Define cropped region (x, y, width, height)
 //        printf("CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT: (%d, %d, %d, %d)", param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
-    cv::Rect cropped_region(param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
+    cv::Rect cropped_region(gray_resized.cols - param_CROP_HEIGHT - param_CROP_Y, param_CROP_X, param_CROP_HEIGHT, param_CROP_WIDTH);
     //  printf("cropped_region:\n\theight: %d\n\twidth: %d\n", cropped_region.height, cropped_region.width);
     // current height: 260, width: 50 [CROP_X = 58, CROP_Y = 0, CROP_WIDTH = 50, CROP_HEIGHT = 260]
 
@@ -377,7 +378,7 @@ int opencv_main(char *img, int width, int height) {
     Mat column_mean;
 
     // Take mean of each column
-    cv::reduce(output, column_mean, 0, cv::REDUCE_AVG);
+    cv::reduce(output, column_mean, 1, cv::REDUCE_AVG);
 
 
 
@@ -408,7 +409,7 @@ int opencv_main(char *img, int width, int height) {
     Mat divergence_img;
 
 
-    cv::resize(thresholded_divergence, divergence_img, Size(520, 50));
+    cv::resize(thresholded_divergence, divergence_img, Size(50, 520));
     //    int size_1[3] = {divergence_img.rows, divergence_img.cols, 1};
     //    Mat divergence_img_;
     //    cv::resize(divergence_img, divergence_img_, cv::Size(520, 50, ))
@@ -447,15 +448,22 @@ int opencv_main(char *img, int width, int height) {
     //    printf("div before insert (h, w, d): %d, %d, %d\n\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
     //    printf("frame before insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
     divergence_img.convertTo(divergence_img, CV_8U);
-    divergence_img.copyTo(frame_grayscale(cv::Rect(0, 190, divergence_img.cols, divergence_img.rows)));
+    divergence_img.copyTo(frame_grayscale(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
     //    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
 
+    int lowest_detection_index = find_best_direction_index(thresholded_divergence);
+
+    int box_width = frame_grayscale.rows / N_DIRBLOCKS;
+//    printf("WAY TO GO: %d\n", lowest_detection_index);
+    printf("Rectangle: %d, %d, %d, %d", 50, lowest_detection_index * box_width, 190, box_width);
+    cv::Rect rect(50, lowest_detection_index * box_width, 190, box_width);
+    cv::rectangle(frame_grayscale, rect, 255);
 
       // Rotate back
 //        cv::Point2f center_inv(frame_grayscale.rows / 2., frame_grayscale.rows / 2.);
 //        cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
 //        cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
-    cv::rotate(frame_grayscale, frame_grayscale, cv::ROTATE_90_CLOCKWISE);
+//    cv::rotate(frame_grayscale, frame_grayscale, cv::ROTATE_90_CLOCKWISE);
 
 
     //  printf("ROTATED");
@@ -514,10 +522,6 @@ int opencv_main(char *img, int width, int height) {
     //    divergence_img.copyTo(frame(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
     //
     //    colorbgr_opencv_to_yuv422(frame, img, width, height);
-
-
-
-    int lowest_detection_index = find_best_direction_index(thresholded_divergence);
 
 
     return lowest_detection_index;
