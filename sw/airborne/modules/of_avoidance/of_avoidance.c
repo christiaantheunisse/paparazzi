@@ -48,7 +48,7 @@ PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 
 // Pause message
 static abi_event new_pause_detection;
-
+int global_pause = 0;
 
 static pthread_mutex_t mutex; // Handles the lock of the memory
 struct ABI_message_type { // Define struct
@@ -65,9 +65,12 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
 
   if (img->type == IMAGE_YUV422) {
     // Call OpenCV (C++ from paparazzi C function)
+      pthread_mutex_lock(&mutex);
+      int local_pause = global_pause;
+      pthread_mutex_unlock(&mutex);
+//      printf("Pause the image_processing: %s\n", (local_pause > 0) ? "TRUE" : "false");
 
-
-    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
+    int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h, local_pause);
 
       pthread_mutex_lock(&mutex);
       global_ABI_message.lowest_detection_index = lowest_index_tmp;
@@ -79,6 +82,12 @@ struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
   return NULL;
 }
 
+void pause_detection_cb(uint8_t __attribute__((unused)) sender_id, uint8_t __attribute__((unused)) pause_dura) {
+    pthread_mutex_lock(&mutex);
+    global_pause = pause_dura; // do_pause > 0 means True and do_pause = 0 means false
+    pthread_mutex_unlock(&mutex);
+}
+
 void OF_init(void)
 {
     pthread_mutex_init(&mutex, NULL);
@@ -86,6 +95,10 @@ void OF_init(void)
     global_ABI_message.new_result = false;
 
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
+
+    // Bind the ABI pause message
+    AbiBindMsgPAUSE_THREAD(PAUSE_THREAD_OBJECT_AVOIDER_ID, &new_pause_detection, pause_detection_cb);
+
 }
 
 // IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
