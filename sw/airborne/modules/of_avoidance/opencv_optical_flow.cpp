@@ -455,7 +455,7 @@ int opencv_main(char *img, int width, int height) {
 
     int box_width = frame_grayscale.rows / N_DIRBLOCKS;
 //    printf("WAY TO GO: %d\n", lowest_detection_index);
-    printf("Rectangle: %d, %d, %d, %d", 50, lowest_detection_index * box_width, 190, box_width);
+//    printf("Rectangle: %d, %d, %d, %d", 50, lowest_detection_index * box_width, 190, box_width);
     cv::Rect rect(50, lowest_detection_index * box_width, 190, box_width);
     cv::rectangle(frame_grayscale, rect, 255);
 

@@ -83,6 +83,10 @@ int new_heading_index = 0;
 #define PAUSE_TIME 15
 #endif
 
+#ifndef PAUSE_V_FACTOR
+#define PAUSE_V_FACTOR 0.3
+#endif
+
 unsigned long pause_time = PAUSE_TIME;
 int param_DIR_CHANGE_THRESHOLD = DIR_CHANGE_THRESHOLD;
 int param_FOV_ANGLE = FOV_ANGLE;
@@ -116,7 +120,7 @@ uint8_t lowest_index = 120;
 // Callback should always have `uint8_t sender_id`
 static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe) {
 //    printf("ABI receives new index: %d", i_safe);
-    printf("Pause: %d", do_pause);
+//    printf("Pause: %d", do_pause);
     if (!do_pause) {
         for (int i = 0; i < N_DIRBLOCKS; i++) {
             if (i == i_safe) {
@@ -136,11 +140,11 @@ static void lowest_index_cb(uint8_t sender_id, uint8_t i_safe) {
         gettimeofday(&now, NULL);
 //        now = clock();
         unsigned long difference = (now.tv_sec - start_time.tv_sec) * 1000000 + now.tv_usec - start_time.tv_usec;
-        printf("Difference: %lu us", difference);
+//        printf("Difference: %lu us", difference);
 
         if ((difference) >= (pause_time * 100 * 1000)) { // * 100 ms * 1000 (us -> ms)
 //        if ((double)(now - start_time)/CLOCKS_PER_SEC >= PAUSE_TIME) {
-            printf("STOP PAUSING ==========================");
+//            printf("STOP PAUSING ==========================");
             do_pause = false;
             for (int i = 0; i < N_DIRBLOCKS; i++) {
                 direction_accumulator[i] = 0;
@@ -181,6 +185,9 @@ void object_avoider_periodic(void)
     switch (navigation_state){
         case SAFE:
             // Move waypoint forward
+            if (do_pause) {
+                moveDistance = PAUSE_V_FACTOR * moveDistance;
+            }
             moveWaypointForward(WP_TRAJECTORY, 1.5f * moveDistance);
             if (!InsideObstacleZone(WaypointX(WP_TRAJECTORY),WaypointY(WP_TRAJECTORY))){
                 navigation_state = OUT_OF_BOUNDS;
