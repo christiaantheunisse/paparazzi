@@ -84,7 +84,7 @@ int new_heading_index = 0;
 #endif
 
 #ifndef PAUSE_V_FACTOR
-#define PAUSE_V_FACTOR 0.3
+#define PAUSE_V_FACTOR 0.4
 #endif
 
 unsigned long pause_time = PAUSE_TIME;

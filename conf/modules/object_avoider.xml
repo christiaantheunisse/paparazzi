@@ -11,6 +11,7 @@
     <define name="FOV_ANGLE" value="160" description="Determines the size of the steering correction when detecting an obstacle"/>
     <define name="DIR_CHANGE_THRESHOLD" value="8" description="Number of consequetive measurements necessary to decide to steer away"/>
     <define name="PAUSE_TIME" value="20" description="The image detection resets and pauses for (PAUSE_TIME * 100ms) after a steer correction"/>
+    <define name="PAUSE_V_FACTOR" value="0.4" description="The percentage of the default speed it has when pausing [0.0 - 1.0]"/>
   </doc>  
   <dep>
     <depends>opencv_optical_flow</depends>
