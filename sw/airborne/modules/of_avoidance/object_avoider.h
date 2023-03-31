@@ -1,20 +1,9 @@
-/*
- * Copyright (C) Roland Meertens
- *
- * This file is part of paparazzi
- *
- */
 /**
- * @file "modules/orange_avoider/orange_avoider.h"
- * @author Roland Meertens
- * Example on how to use the colours detected to avoid orange pole in the cyberzoo
+ * This file is created by TEAM 2 from 2023 for the AFMAV course
  */
 
 #ifndef OBJECT_AVOIDER_H
 #define OBJECT_AVOIDER_H
-
-// settings
-extern float oa_color_count_frac;
 
 // functions
 extern void object_avoider_init(void);

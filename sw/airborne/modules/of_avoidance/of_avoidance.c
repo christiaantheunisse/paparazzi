@@ -1,81 +1,41 @@
-/*
- * Copyright (C) C. De Wagter
- *
- * This file is part of paparazzi
- *
- * paparazzi is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * paparazzi is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- */
 /**
- * @file "modules/computer_vision/cv_opencvdemo.c"
- * @author C. De Wagter
- * A simple module showing what you can do with opencv on the bebop.
+ * This file is created by TEAM 2 from 2023 for the AFMAV course
  */
 
 #include "modules/computer_vision/cv.h"
-//#include "modules/computer_vision/of_avoidance.h"
 #include "of_avoidance.h"
-// #include "modules/computer_vision/opencv_example.h"
-
 #include "modules/core/abi.h"
 #include "pthread.h"
-
 #include <stdio.h>
-// TODO: add ABI broadcast listener and function which responds to a new
-// direction index being published by the image processor. In this function,
-// run Adam's code to process the index and determine where to go.
 
 #ifndef OPENCVDEMO_FPS
-#define OPENCVDEMO_FPS 0       ///< Default FPS (zero means run at camera fps)
+#define OPENCVDEMO_FPS 0       // Default FPS (zero means run at camera fps)
 #endif
 PRINT_CONFIG_VAR(OPENCVDEMO_FPS)
 
-// DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID defined in sw/airborne/modules/core/abi_sender_divs.h
-//#ifndef OFF_DIV_SAFE_INDEX
-//#define OFF_DIV_SAFE_INDEX DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID
-//#endif
-
-// Pause message
-static abi_event new_pause_detection;
-
-
 static pthread_mutex_t mutex; // Handles the lock of the memory
+
+// Stores the output from the image processing which needs to be sent to the autopilot
 struct ABI_message_type { // Define struct
     int lowest_detection_index;
     bool new_result;
 };
-// Shared by video thread and autopilot thread
-struct ABI_message_type global_ABI_message; // Make a global var of type ABI_message_type (the custom struct)
+struct ABI_message_type global_ABI_message; // Make a global var of type ABI_message_type (our custom struct)
 
 // Function
-struct image_t *opencv_func(struct image_t *img, uint8_t camera_id);
 struct image_t *opencv_func(struct image_t *img, uint8_t camera_id)
 {
-
   if (img->type == IMAGE_YUV422) {
-    // Call OpenCV (C++ from paparazzi C function)
-
-
+    // Call the `opencv_main` function in `opencv_optical_flow.cpp`. This is where all the image processing happens
+    // The index of the best direction to go is returned
     int lowest_index_tmp = opencv_main((char *) img->buf, img->w, img->h);
 
-      pthread_mutex_lock(&mutex);
-      global_ABI_message.lowest_detection_index = lowest_index_tmp;
-      global_ABI_message.new_result = true;
-      pthread_mutex_unlock(&mutex);
-
+    // Safe the output of the image processing in a global variable
+    pthread_mutex_lock(&mutex);
+    global_ABI_message.lowest_detection_index = lowest_index_tmp;
+    global_ABI_message.new_result = true;
+    pthread_mutex_unlock(&mutex);
   }
-
   return NULL;
 }
 
@@ -88,21 +48,18 @@ void OF_init(void)
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func, OPENCVDEMO_FPS, 0);
 }
 
-// IMPLEMENT HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// ABI broadcast of best direction index
+// This function is periodically called to send the output of the image processing with an ABI messages to the autopilot
+// The frequency can be set in conf/modules/opencv_optical_flow.xml
 void OF_periodic(void) {
     // Copy the global var to a local var
     struct ABI_message_type local_ABI_message;
-
     pthread_mutex_lock(&mutex);
     local_ABI_message.new_result = global_ABI_message.new_result;
     local_ABI_message.lowest_detection_index = global_ABI_message.lowest_detection_index;
     pthread_mutex_unlock(&mutex);
 
-
+    // If there is a new message from the image processing
     if (local_ABI_message.new_result) {
-//        printf("OF_periodic output:   %d\n", local_ABI_message.lowest_detection_index);
         // ABI broadcast
         // DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID defined in sw/airborne/modules/core/abi_sender_divs.h
         AbiSendMsgDIVERGENCE_SAFE_HEADING(DIVERGENCE_SAFE_HEADING_OF_AVOIDANCE_ID, local_ABI_message.lowest_detection_index);

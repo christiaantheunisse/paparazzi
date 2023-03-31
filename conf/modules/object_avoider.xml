@@ -3,14 +3,14 @@
 <module name="object_avoider" dir="of_avoidance">
   <doc>
     <description>
-      The object avoider of team 2 2023
+      This file includes the autopilot functions from the module `of_avoidance` made by team 2 in 2023 for the AFMAV course.
     </description>
     <define name="OFF_DIV_SAFE_INDEX" value="37" description="The DIVERGENCE_SAFE_HEADING message channel"/>
     <!-- Autopilot settings -->
     <define name="N_DIRBLOCKS" value="5" description="Possible heading directions"/>
     <define name="FOV_ANGLE" value="160" description="Determines the size of the steering correction when detecting an obstacle"/>
-    <define name="DIR_CHANGE_THRESHOLD" value="8" description="Number of consequetive measurements necessary to decide to steer away"/>
-    <define name="PAUSE_TIME" value="20" description="The image detection resets and pauses for (PAUSE_TIME * 100ms) after a steer correction"/>
+    <define name="DIR_CHANGE_THRESHOLD" value="8" description="Number of consecutive measurements necessary to decide to steer away"/>
+    <define name="PAUSE_TIME" value="20" description="The confidence values reset and aren't updated for (PAUSE_TIME * 100ms) after a steer correction"/>
     <define name="PAUSE_V_FACTOR" value="0.4" description="The percentage of the default speed it has when pausing [0.0 - 1.0]"/>
   </doc>  
   <dep>

@@ -1,28 +1,6 @@
-/*
- * Copyright (C) C. De Wagter
- *
- * This file is part of paparazzi
- *
- * paparazzi is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * paparazzi is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- */
 /**
- * @file "modules/computer_vision/opencv_example.cpp"
- * @author C. De Wagter
- * A simple module showing what you can do with opencv on the bebop.
+ * This file is created by TEAM 2 from 2023 for the AFMAV course
  */
-
 
 #include "opencv_optical_flow.h"
 #include <stdio.h>
@@ -39,48 +17,45 @@ using namespace cv;
 #include <chrono>
 #include <thread>
 
-#ifndef DET_THRESHOLD
-#define DET_THRESHOLD 0.14 // for the simulator
+
+// All these parameters can be set in conf/modules/opencv_optical_flow.xml
+#ifndef DET_THRESHOLD // Divergence cutoff threshold
+#define DET_THRESHOLD 0.14
 #endif
-
-double param_DET_THRESHOLD = DET_THRESHOLD;
-
-#ifndef RESIZE
+#ifndef RESIZE // Resize factor use for the camera image in x and y direction
 #define RESIZE 0.25
 #endif
-
 #ifndef RESIZE_FX
 #define RESIZE_FX RESIZE
 #endif
 #ifndef RESIZE_FY
 #define RESIZE_FY RESIZE
 #endif
-
-double param_RESIZE_FX = RESIZE_FX;
-double param_RESIZE_FY = RESIZE_FY;
-
-#ifndef OFF_PYR_SCALE
+#ifndef OFF_PYR_SCALE // Farneback optical flow setting
 #define OFF_PYR_SCALE 0.5
 #endif
-#ifndef OFF_LEVELS
+#ifndef OFF_LEVELS // Farneback optical flow setting
 #define OFF_LEVELS 3
 #endif
-#ifndef OFF_WINSIZE
+#ifndef OFF_WINSIZE // Farneback optical flow setting
 #define OFF_WINSIZE 10
 #endif
-#ifndef OFF_ITERATIONS
+#ifndef OFF_ITERATIONS // Farneback optical flow setting
 #define OFF_ITERATIONS 1
 #endif
-#ifndef OFF_POLY_N
+#ifndef OFF_POLY_N // Farneback optical flow setting
 #define OFF_POLY_N 1
 #endif
-#ifndef OFF_POLY_SIGMA
+#ifndef OFF_POLY_SIGMA // Farneback optical flow setting
 #define OFF_POLY_SIGMA 1.2
 #endif
-#ifndef OFF_FLAGS
+#ifndef OFF_FLAGS // Farneback optical flow setting
 #define OFF_FLAGS 0
 #endif
 
+double param_DET_THRESHOLD = DET_THRESHOLD;
+double param_RESIZE_FX = RESIZE_FX;
+double param_RESIZE_FY = RESIZE_FY;
 double param_OFF_PYR_SCALE = OFF_PYR_SCALE;
 int param_OFF_LEVELS = OFF_LEVELS;
 int param_OFF_WINSIZE = OFF_WINSIZE;
@@ -89,16 +64,14 @@ int param_OFF_POLY_N = OFF_POLY_N;
 double param_OFF_POLY_SIGMA = OFF_POLY_SIGMA;
 double param_OFF_FLAGS = OFF_FLAGS;
 
-// Current values: Use width [60, 460] out of 520 px and for the height [50, 100] out of 240 px
-// Total [width, height] = [520, 240]
-
-#ifndef CROP_X
+// These values are applied to the original image, which has size (w x h) 520 x 240
+#ifndef CROP_X // Crop offset in x-direction before resizing for the left and from the right [0, 520 / 2]
 #define CROP_X 60
 #endif
-#ifndef CROP_Y
+#ifndef CROP_Y // Crop offset in y-direction before resizing (so from the top) [0, 240]
 #define CROP_Y 50
 #endif
-#ifndef CROP_HEIGHT
+#ifndef CROP_HEIGHT // Crop size in y-direction before resizing [0, 240]
 #define CROP_HEIGHT 50
 #endif
 
@@ -107,21 +80,21 @@ int param_CROP_Y = CROP_Y  * RESIZE_FY;  // 50 * 0.25
 int param_CROP_WIDTH = 520 * RESIZE_FX -  2 * param_CROP_X; // (520 * 0.25) - 2 * 15 = 100
 int param_CROP_HEIGHT = CROP_HEIGHT * RESIZE_FY;  // Total 240 -> [50, 100]
 
-#ifndef N_DIRBLOCKS
+//
+#ifndef N_DIRBLOCKS // The number of blocks over which to divide the field of view (should be odd)
 #define N_DIRBLOCKS 5
 #endif
-#ifndef M_DIRFILTER
+#ifndef M_DIRFILTER // The number of adjacent blocks to take into account to determine the no. of obstacles for a certain direction
 #define M_DIRFILTER 1
 #endif
-
-#ifndef PERCENTAGE_HISTORY_IMPORTANCE
+#ifndef PERCENTAGE_HISTORY_IMPORTANCE // The extent to which the past detections are used when determining the new detections [0.0, 1.0]
 #define PERCENTAGE_HISTORY_IMPORTANCE 0.7
 #endif
 
 double param_PERCENTAGE_HISTORY_IMPORTANCE = PERCENTAGE_HISTORY_IMPORTANCE;
 
 #ifndef PREFERRED_INDEX
-#define PREFERRED_INDEX 2
+#define PREFERRED_INDEX N_DIRBLOCKS / 2
 #endif
 #ifndef SIDE_PENALTY
 #define SIDE_PENALTY 0.05
@@ -130,14 +103,11 @@ double param_PERCENTAGE_HISTORY_IMPORTANCE = PERCENTAGE_HISTORY_IMPORTANCE;
 int param_PREFERRED_INDEX = PREFERRED_INDEX;
 double param_SIDE_PENALTY = SIDE_PENALTY;
 
-Mat old_frame_grayscale;
-double detection_history[N_DIRBLOCKS] = {};
+Mat old_frame_grayscale; // Store the previous grayscale frame for the optical flow
+double detection_history[N_DIRBLOCKS] = {}; // The history of detections per block (the FOV is divided in N_DIRBLOCKS)
 
-int start_time;
-int pause_duration;
-bool pausing;
-int center = N_DIRBLOCKS / 2;
-
+// Function to find the best direction to go when given a certain detection array.
+// The detection array stores for every pixel in x-direction of the resized image if there is an obstacle or not.
 int find_best_direction_index(const cv::Mat &detection_horizon) {
 
   // Initialise array to hold values of detection horizon
@@ -152,13 +122,14 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
   // Determine pixel width of detection horizon
   int horizon_width = detection_horizon.rows;
 
-  // Determine the amount of cells that it skips per block
+  // Determine the amount of pixels/array elements in one block (the FOV is divided in N_DIRBLOCKS)
   int pixels_per_block = horizon_width / N_DIRBLOCKS;
 
   double detections_per_block[N_DIRBLOCKS] = {};
   double updated_detection_history[N_DIRBLOCKS] = {};
 
   // Loop through discrete direction blocks
+  // Sum up all the detections inside one block
   for (int n = 0; n < N_DIRBLOCKS; n++) {
 
       // Determine low and high index of block
@@ -176,12 +147,13 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
 
       }
 
-      // Set detection count for this block to the sum of detections
+      // Save the total number of detections inside a block
       detections_per_block[n] = detection_count;
 
   }
 
-  // Loop through direction blocks again
+  // Loop through direction blocks again to add the detection within the neighbour blocks with a weight of 0.5
+  // This means that blocks close to a block with many detections are also less likely to be chosen.
   for (int i = 0; i < N_DIRBLOCKS; i++) {
 
       // Variable to store filtered (convoluted) detections
@@ -214,7 +186,7 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
   double lowest_filtered_score = 10000;
   int lowest_filtered_index = -1;
 
-  // Loop through direction blocks ahain
+  // Loop through direction blocks again and find the block with the lowest value. This is the best index to go.
   for (int i = 0; i < N_DIRBLOCKS; i++) {
 
       // If it finds a better score...
@@ -230,6 +202,8 @@ int find_best_direction_index(const cv::Mat &detection_horizon) {
   return lowest_filtered_index;
 }
 
+// Calculate the divergence of the optical flow
+// The input is an image with 2 channels representing respectively the flow in horizontal and vertical direction
 cv::Mat calculate_divergence(const cv::Mat& flow)
 {
   // Split the two channels of the flow Mat into separate Mats
@@ -252,6 +226,7 @@ cv::Mat calculate_divergence(const cv::Mat& flow)
   cv::filter2D(flow_x, dx, -1, kernelx);
   cv::filter2D(flow_y, dy, -1, kernely);
 
+  // Take absolute value to get both strongly positive and strongly negative values
   dx_abs = cv::abs(dx);
   dy_abs = cv::abs(dy);
 
@@ -268,289 +243,70 @@ int opencv_main(char *img, int width, int height) {
 
     // Cast the image struct into an opencv Mat
     Mat frame(height, width, CV_8UC2, img);
-    // Rotate
-//        cv::Point2f center(frame.cols / 2., frame.cols / 2.);
-//        cv::Mat r = cv::getRotationMatrix2D(center, 90, 1.0);
-//        cv::warpAffine(frame, frame, r, cv::Size(frame.rows, frame.cols));
 
-//    cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
-
-    // Initialize Mat to hold grayscale version of image
+    // Convert the YUV input to grayscale
     Mat frame_grayscale, gray_resized;
-
-
-    // Convert to grayscale and put in previously defined Mat
     cv::cvtColor(frame, frame_grayscale, CV_YUV2GRAY_Y422);
 
-    // DEBUG STEP
-    // grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
-    //   printf("frame_grayscale:\n\theight: %d\n\twidth: %d\n", frame_grayscale.size().height, frame_grayscale.size().width);
-    // height: 520, width: 240
-
-    // Resize gray frame
+    // Resize the gray frame
     cv::resize(frame_grayscale, gray_resized, Size(), param_RESIZE_FX, param_RESIZE_FY);
-    //  printf("gray_resized:\n\theight: %d\n\twidth: %d\n", gray_resized.size().height, gray_resized.size().width);
-    // height: 260, width: 120 [param_RESIZE_FX = 0.5, param_RESIZE_FY = 0.5]
 
-    // Define cropped region (x, y, width, height)
-//        printf("CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT: (%d, %d, %d, %d)", param_CROP_X, param_CROP_Y, param_CROP_WIDTH, param_CROP_HEIGHT);
+    // Define and apply the crop to get a small window to apply optical flow on, since optical flow requires a lot of
+    // computational power
     cv::Rect cropped_region(gray_resized.cols - param_CROP_HEIGHT - param_CROP_Y, param_CROP_X, param_CROP_HEIGHT, param_CROP_WIDTH);
-    //  printf("cropped_region:\n\theight: %d\n\twidth: %d\n", cropped_region.height, cropped_region.width);
-    // current height: 260, width: 50 [CROP_X = 58, CROP_Y = 0, CROP_WIDTH = 50, CROP_HEIGHT = 260]
-
-    // Crop frame to smaller region
     Mat cropped_gray_frame = gray_resized(cropped_region);
-    //  printf("cropped_gray_frame:\n\theight: %d\n\twidth: %d\n", cropped_gray_frame.size().height, cropped_gray_frame.size().width);
-    // current height: 260, width: 50
 
-    // DEBUG STEP -> Does not work because the video expects a size of 240 x 520
-    //  grayscale_opencv_to_yuv422(cropped_gray_frame, img, width, height);
-
-    // If there is no previous frame (i.e. the drone just started up)
-    // set this frame to be old frame also
+    // If there is no previous frame (only in the first step) use the current frame as the previous frame
+    // This will indeed result in zero optical flow
     if (old_frame_grayscale.empty()) {
-
         cropped_gray_frame.copyTo(old_frame_grayscale);
-
     }
 
-    // Create Mat to hold flow field
+    // Apply the Farneback optical flow to a grayscale part the image by using an OpenCV function
     Mat flow_field;
-
-    // Calculate optical flow using old gray frame and new gray frame. Store in flowUmat
-    // prev, next, src, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags
-
-    // FOR TIMING
-//        auto start = std::chrono::high_resolution_clock::now();
-
-
     cv::calcOpticalFlowFarneback(old_frame_grayscale, cropped_gray_frame, flow_field, param_OFF_PYR_SCALE,
                                  param_OFF_LEVELS, param_OFF_WINSIZE, param_OFF_ITERATIONS, param_OFF_POLY_N,
                                  param_OFF_POLY_SIGMA, param_OFF_FLAGS);
 
-    // FOR TIMING
-//        auto stop = std::chrono::high_resolution_clock::now();
-//        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-//        printf("Duration of rotation OF: %d\n", duration);
-
-
-    //  printf("Flow_field:\nheight: %d\nwidth: %d\nchannels: %d\n", debug_FF.rows, debug_FF.cols, debug_FF.channels());
-
-    // visualization
-    //    Mat flow_parts[2];
-    //    split(flow_field, flow_parts);
-    //    printf("\nOF: ");
-    //    for(int i=0; i<flow_field.cols; i++)
-    //        for(int j=0; j<flow_field.rows; j++)
-    //            printf(" %f", flow_field.at<float>(j, i));
-    //    printf("\n\n\n");
-
-    //    Mat magnitude, angle, magn_norm;
-    //    cartToPolar(flow_parts[0], flow_parts[1], magnitude, angle, true);
-    //    normalize(magnitude, magn_norm, 0.0f, 1.0f, NORM_MINMAX);
-    //    angle *= ((1.f / 360.f) * (180.f / 255.f));
-    //    //build hsv image
-    //    Mat _hsv[3], hsv, hsv8, bgr;
-    //    _hsv[0] = angle;
-    //    _hsv[1] = Mat::ones(angle.size(), CV_32F);
-    //    _hsv[2] = magn_norm;
-    //    merge(_hsv, 3, hsv);
-    //    hsv.convertTo(hsv8, CV_8U, 255.0);
-    //    cvtColor(hsv8, bgr, COLOR_HSV2BGR);
-    //    imshow("frame2", bgr);
-    //    int keyboard = waitKey(30);
-    //    if (keyboard == 'q' || keyboard == 27)
-    //        break;
-    //    prvs = next;
-
-
-    // Copy this frame to the oldGray Mat, to be used in next frame
+    // Save the current frame to be used as the previous frame in the next iteration
     cropped_gray_frame.copyTo(old_frame_grayscale);
 
-    // Initialise output Mat for divergence calculation results
+    // Calculate the divergence with our own function also in this file
     Mat output;
-
-    // Calculate divergence from flow
     output = calculate_divergence(flow_field);
-    //    printf("Divergence: h = %d, w = %d, c = %d", output.rows, output.cols, output.channels());
 
-    // Mat to hold the mean for each image column
+    // Calculate the mean divergence in the height direction of the image,
+    // so we are left with an 1D array of values along the width of the image
     Mat column_mean;
-
-    // Take mean of each column
     cv::reduce(output, column_mean, 1, cv::REDUCE_AVG);
 
-
-
-    // Mat to hold the thresholded 1-D mean divergence array
+    // Apply a threshold to the mean divergence to determine whether there is an obstacle or not.
     Mat thresholded_divergence;
-
-    //    printf("\nDivergence: ");
-    //    for(int i=0; i<column_mean.cols; i++)
-    //        printf(" %d", column_mean.at<float>(0, i));
-    //    printf("\n\n\n");
-
-    // Threshold it;
-    // inverse means below threshold is set to 1; otherwise to 0
-    // src, dst, threshold, max_value, method
     cv::threshold(column_mean, thresholded_divergence, param_DET_THRESHOLD, 1, THRESH_BINARY_INV);
-    //  printf("Thresholded div:\nheight: %d\nwidth: %d\nchannels: %d\n", thresholded_divergence.rows, thresholded_divergence.cols, thresholded_divergence.channels());
 
-    //    printf("Columnmean: h = %d, w = %d, c = %d", column_mean.rows, column_mean.cols, column_mean.channels());
-    //
-    //    printf("\nOF: ");
-    //    for(int i=0; i<thresholded_divergence.cols; i++)
-    //        for(int j=0; j<thresholded_divergence.rows; j++)
-    //            printf(" %f", thresholded_divergence.at<float>(j, i));
-    //    printf("\n\n\n");
-    // Display the divergence in the bottom of the image
-
-    // Size up to an bigger image
+    // ==== Visual the thresholded detections as a 'barcode' on the camera stream ====
     Mat divergence_img;
-
-
+    // Give the 1D array with the thresholded divergence the right size to be laid on the image
     cv::resize(thresholded_divergence, divergence_img, Size(50, 520));
-    //    int size_1[3] = {divergence_img.rows, divergence_img.cols, 1};
-    //    Mat divergence_img_;
-    //    cv::resize(divergence_img, divergence_img_, cv::Size(520, 50, ))
-
-    //    Mat divergence_img_zeros = Mat::zeros(divergence_img.rows, divergence_img.cols, divergence_img.type());
-    //    Mat divergence_img_out;
-    //    Mat in[2] = { divergence_img,divergence_img_zeros};
-    //    merge(in, 2, divergence_img_out);
-    //    printf("div img_ (h, w, c, d): %d, %d, %d, %d\n", divergence_img_out.rows, divergence_img_out.cols, divergence_img_out.channels(), divergence_img_out.dims);
-
-    //    std::vector<cv::Mat> vChannels;
-    //    for (unsigned int c = 0; c < 2; c++)
-    //    {
-    //        vChannels.push_back(divergence_img);
-    //    }
-    //    cv::Mat divergence_img_2;
-    //    cv::merge(vChannels, divergence_img_2);
-
-
-    //  Mat divergence_img_(3, {divergence_img.rows, divergence_img.cols, 1}, divergence_img.type(), divergence_img.data);
-    //  cv::cvtColor(divergence_img, divergence_img, CV_GRAY2YUV);
-    //  cv::cvtColor(divergence_img, divergence_img, CV_YUV2BGR_Y422);
-    //    divergence_img_out.convertTo(divergence_img_out, CV_8U);
-    //    for(int i=0; i<divergence_img_out.cols; i++)
-    //        for(int j=0; j<divergence_img_out.rows; j++)
-    //            printf(" (%d %d)", divergence_img_out.at<uchar>(j, i, 0), divergence_img_out.at<uchar>(j, i, 1));
-    //    printf("\n\n\n");
-
-    //  printf("div img (h, w, d): %d, %d, %d\n", divergence_img_out.rows, divergence_img_out.cols, divergence_img_out.channels());
-    //  printf("frame (h, w, d): %d, %d, %d\n\n", frame.rows, frame.cols, frame.channels());
-    //    divergence_img_out.copyTo(frame(cv::Rect(0, 190, divergence_img_out.cols, divergence_img_out.rows)));
-    //    printf("COPIED");
-    //    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame.rows, frame.cols, frame.channels());
-
     divergence_img = divergence_img * 255;
-    //    printf("div before insert (h, w, d): %d, %d, %d\n\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
-    //    printf("frame before insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
     divergence_img.convertTo(divergence_img, CV_8U);
+    // Lay the 'barcode' on the grayscale image
     divergence_img.copyTo(frame_grayscale(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
-    //    printf("frame after insert (h, w, d): %d, %d, %d\n\n", frame_grayscale.rows, frame_grayscale.cols, frame_grayscale.channels());
+    // ==== END ====
 
+    // Call our own function `find_best_direction_index` to determine the index
+    // of the block (the FOV is divided in N_DIRBLOCKS) which is the best way to go
     int lowest_detection_index = find_best_direction_index(thresholded_divergence);
 
+    // ==== Visual the best index by highlighting the specific block with a white box ====
     int box_width = frame_grayscale.rows / N_DIRBLOCKS;
-//    printf("WAY TO GO: %d\n", lowest_detection_index);
-//    printf("Rectangle: %d, %d, %d, %d", 50, lowest_detection_index * box_width, 190, box_width);
     cv::Rect rect(50, lowest_detection_index * box_width, 190, box_width);
     cv::rectangle(frame_grayscale, rect, 255);
+    // ==== END ====
 
-      // Rotate back
-//        cv::Point2f center_inv(frame_grayscale.rows / 2., frame_grayscale.rows / 2.);
-//        cv::Mat r_inv = cv::getRotationMatrix2D(center_inv, -90, 1.0);
-//        cv::warpAffine(frame_grayscale, frame_grayscale, r_inv, cv::Size(frame_grayscale.rows, frame_grayscale.cols));
-//    cv::rotate(frame_grayscale, frame_grayscale, cv::ROTATE_90_CLOCKWISE);
-
-
-    //  printf("ROTATED");
-    //  cv::cvtColor(frame, frame, CV_YUV2BGR_Y422);
-    //    colorbgr_opencv_to_yuv422(frame, img, width, height);
+    // Convert the grayscale image back to YUV so the video thread can handle it
     grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
-    //  printf("After Color converted");
 
-
-    //outputBGRScale.copyTo(frame(cv::Rect(0, frame.rows - outputBGRScale.rows, outputBGRScale.cols, outputBGRScale.rows)));
-
-
-    //  // Rotate
-    //  cv::Point2f center(divergence_img.cols/2, divergence_img.rows/2);
-    //  cv::Mat r = cv::getRotationMatrix2D(center, 90, 1);
-    //  cv::warpAffine(divergence_img, divergence_img, r, cv::Size(divergence_img.rows, divergence_img.cols));
-    //
-    //  // USE GRAYSCALE
-    //  divergence_img = divergence_img * 255;
-    //  divergence_img.copyTo(frame_grayscale(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
-    //  grayscale_opencv_to_yuv422(frame_grayscale, img, width, height);
-    //
-    //  printf("\nDivergence: ");
-    //  for(int i=0; i<thresholded_divergence.cols; i++)
-    //      printf(" %d", thresholded_divergence.at<uchar>(0, i));
-    //  printf("\n\n\n");
-    //    printf("Image: ");
-    //    for(int i=0; i<frame.cols; i++)
-    //        printf(" %d", frame.at<float>(120, i));
-    //    printf("\n\n");
-
-
-    //  grayscale_opencv_to_yuv422(divergence_img, img, width, height);
-
-
-    ////  cv::cvtColor(divergence_img, divergence_img, CV_GRAY2BGR);
-    //  divergence_img = divergence_img * 255;
-    //  printf("Div image:\nheight: %d\nwidth: %d\nchannels: %d\n", divergence_img.rows, divergence_img.cols, divergence_img.channels());
-    //  cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_Y422);
-    //  printf("frame:\nheight: %d\nwidth: %d\nchannels: %d\ndepth: %d\n", frame.rows, frame.cols, frame.channels(), frame.depth());
-    ////  Mat combined_imgs(frame, cv::Rect(0, 0, divergence_img.cols, divergence_img.rows));
-    ////  divergence_img.copyTo(combined_imgs);
-    //  divergence_img.copyTo(frame(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
-    //  printf("frame:\nheight: %d\nwidth: %d\nchannels: %d\ndepth: %d\n", frame.rows, frame.cols, frame.channels(), frame.depth());
-    //  colorbgr_opencv_to_yuv422(frame, img, width, height);
-    //
-    //
-
-    //    Mat divergence_img;
-    //    cv::resize(thresholded_divergence, divergence_img, Size(240, 520));
-    //    divergence_img.convertTo(divergence_img, CV_8U);
-    //    cv::cvtColor(divergence_img, divergence_img, cv::COLOR_GRAY2BGR);
-    //
-    //    cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_Y422);
-    //
-    //    divergence_img.copyTo(frame(cv::Rect(0, 0, divergence_img.cols, divergence_img.rows)));
-    //
-    //    colorbgr_opencv_to_yuv422(frame, img, width, height);
-
-
+    // Return the best index
     return lowest_detection_index;
-}
-
-
-int opencv_example(char *img, int width, int height)
-{
-  // Create a new image, using the original bebop image.
-  Mat M(height, width, CV_8UC2, img);
-  Mat image;
-
-#if OPENCVDEMO_GRAYSCALE
-  //  Grayscale image example
-  cvtColor(M, image, CV_YUV2GRAY_Y422);
-  // Canny edges, only works with grayscale image
-  int edgeThresh = 35;
-  Canny(image, image, edgeThresh, edgeThresh * 3);
-  // Convert back to YUV422, and put it in place of the original image
-  grayscale_opencv_to_yuv422(image, img, width, height);
-#else // OPENCVDEMO_GRAYSCALE
-  // Color image example
-  // Convert the image to an OpenCV Mat
-  cvtColor(M, image, CV_YUV2BGR_Y422);
-  // Blur it, because we can
-  blur(image, image, Size(5, 5));
-  // Convert back to YUV422 and put it in place of the original image
-  colorbgr_opencv_to_yuv422(image, img, width, height);
-#endif // OPENCVDEMO_GRAYSCALE
-
-  return 0;
 }
